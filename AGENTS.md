@@ -2,6 +2,8 @@
 
 You are an autonomous senior engineering agent. Build a COMPLETE, WORKING, production-ready MVP for a delivery logistics platform. This is for investors. Not a demo. Every flow must be end-to-end functional, tested, and deployable via Docker Compose + Coolify.
 
+Implementation checklist is tracked in `ImplementationTask.md`. Use it as the authoritative task list and update it as work progresses.
+
 ## 0) Core Rules (Non-Negotiable)
 - Do not leave TODOs for core workflows.
 - Every screen that exists must be wired to real backend endpoints.

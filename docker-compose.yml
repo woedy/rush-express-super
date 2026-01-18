@@ -1,0 +1,53 @@
+version: "3.9"
+
+services:
+  backend:
+    build:
+      context: ./backend
+    depends_on:
+      - postgres
+      - redis
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: rush_express
+      POSTGRES_USER: rush_express
+      POSTGRES_PASSWORD: rush_express
+  redis:
+    image: redis:7-alpine
+  celery-worker:
+    build:
+      context: ./backend
+    depends_on:
+      - backend
+      - redis
+  celery-beat:
+    build:
+      context: ./backend
+    depends_on:
+      - backend
+      - redis
+  nginx:
+    image: nginx:1.25-alpine
+    depends_on:
+      - backend
+  web-customer:
+    build:
+      context: ./web-customer
+    depends_on:
+      - backend
+  web-rider:
+    build:
+      context: ./web-rider
+    depends_on:
+      - backend
+  web-merchant:
+    build:
+      context: ./web-merchant
+    depends_on:
+      - backend
+  web-admin:
+    build:
+      context: ./web-admin
+    depends_on:
+      - backend
