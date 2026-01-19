@@ -9,22 +9,22 @@ Use this checklist as the authoritative execution plan. Check items only after t
 ## 1) Backend Bootstrap (Django + DRF + Channels + Celery)
 - [x] Initialize Django project with settings for PostgreSQL, Redis, Celery, Channels.
 - [x] Configure JWT auth (access + refresh) and token refresh/blacklist flow.
-- [ ] Add RBAC middleware/permissions and tenant isolation guardrails.
-- [ ] Add audit logging model + request ID logging + structured logging.
-- [ ] Add health checks: `/health` and `/ready`.
-- [ ] Add rate limiting for auth and order creation.
-- [ ] Add migrations and database indexes for all required entities.
-- [ ] Create seed script (demo merchant + branch + inventory + rider + customer).
+- [x] Add RBAC middleware/permissions and tenant isolation guardrails.
+- [x] Add audit logging model + request ID logging + structured logging.
+- [x] Add health checks: `/health` and `/ready`.
+- [x] Add rate limiting for auth and order creation.
+- [x] Add migrations and database indexes for all required entities.
+- [x] Create seed script (demo merchant + branch + inventory + rider + customer).
 
 ## 2) Domain Models + Migrations
 - [x] User model with roles: CUSTOMER, RIDER, MERCHANT, ADMIN.
-- [ ] Profiles: CustomerProfile, RiderProfile (KYC, vehicle), MerchantProfile.
-- [ ] MerchantBranch + InventoryItem.
-- [ ] Orders: Order + OrderItem + OrderTrackingEvent.
-- [ ] RiderAvailability, RiderLocation, RiderEarnings.
-- [ ] Payment + PaymentTransaction (Stripe/PayPal test modes).
-- [ ] Notification + ChatMessage.
-- [ ] AuditLog.
+- [x] Profiles: CustomerProfile, RiderProfile (KYC, vehicle), MerchantProfile.
+- [x] MerchantBranch + InventoryItem.
+- [x] Orders: Order + OrderItem + OrderTrackingEvent.
+- [x] RiderAvailability, RiderLocation, RiderEarnings.
+- [x] Payment + PaymentTransaction (Stripe/PayPal test modes).
+- [x] Notification + ChatMessage.
+- [x] AuditLog.
 
 ## 3) Core REST APIs
 ### Auth

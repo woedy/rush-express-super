@@ -25,10 +25,13 @@ INSTALLED_APPS = [
     "django_filters",
     "channels",
     "accounts",
+    "core",
+    "delivery",
 ]
 
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
+    "core.middleware.RequestIdMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -92,8 +95,16 @@ REST_FRAMEWORK = {
     ),
     "DEFAULT_PERMISSION_CLASSES": (
         "rest_framework.permissions.IsAuthenticated",
+        "accounts.permissions.IsNotSuspended",
     ),
     "DEFAULT_FILTER_BACKENDS": ("django_filters.rest_framework.DjangoFilterBackend",),
+    "DEFAULT_THROTTLE_CLASSES": (
+        "rest_framework.throttling.ScopedRateThrottle",
+    ),
+    "DEFAULT_THROTTLE_RATES": {
+        "auth": "20/min",
+        "order_create": "10/min",
+    },
 }
 
 SIMPLE_JWT = {
@@ -123,4 +134,30 @@ CHANNEL_LAYERS = {
             "hosts": [os.environ.get("CHANNEL_REDIS_URL", "redis://redis:6379/2")]
         },
     }
+}
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "filters": {
+        "request_id": {
+            "()": "core.logging.RequestIdFilter",
+        }
+    },
+    "formatters": {
+        "standard": {
+            "format": "%(asctime)s [%(levelname)s] [req:%(request_id)s] %(name)s %(message)s",
+        }
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "filters": ["request_id"],
+            "formatter": "standard",
+        }
+    },
+    "root": {
+        "handlers": ["console"],
+        "level": os.environ.get("DJANGO_LOG_LEVEL", "INFO"),
+    },
 }
