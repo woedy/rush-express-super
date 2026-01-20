@@ -28,37 +28,37 @@ Use this checklist as the authoritative execution plan. Check items only after t
 
 ## 3) Core REST APIs
 ### Auth
-- [ ] POST `/auth/register` (role-specific rules).
-- [ ] POST `/auth/login`.
-- [ ] POST `/auth/refresh`.
-- [ ] POST `/auth/logout`.
-- [ ] GET `/me`.
+- [x] POST `/auth/register` (role-specific rules).
+- [x] POST `/auth/login`.
+- [x] POST `/auth/refresh`.
+- [x] POST `/auth/logout`.
+- [x] GET `/me`.
 
 ### Customer
-- [ ] CRUD addresses.
-- [ ] Quote + create order + confirm payment.
-- [ ] Order history + reorder.
-- [ ] Order tracking (REST).
-- [ ] Chat endpoints (REST fetch).
+- [x] CRUD addresses.
+- [x] Quote + create order + confirm payment.
+- [x] Order history + reorder.
+- [x] Order tracking (REST).
+- [x] Chat endpoints (REST fetch).
 
 ### Rider
-- [ ] Availability online/offline.
-- [ ] Available orders list.
-- [ ] Accept assignment.
-- [ ] Update status (picked up, in transit, delivered).
-- [ ] Location update endpoint.
-- [ ] Earnings endpoints.
+- [x] Availability online/offline.
+- [x] Available orders list.
+- [x] Accept assignment.
+- [x] Update status (picked up, in transit, delivered).
+- [x] Location update endpoint.
+- [x] Earnings endpoints.
 
 ### Merchant
-- [ ] Branch CRUD.
-- [ ] Inventory CRUD.
-- [ ] Orders dashboard status updates.
-- [ ] Analytics endpoints (count, revenue, avg delivery time).
+- [x] Branch CRUD.
+- [x] Inventory CRUD.
+- [x] Orders dashboard status updates.
+- [x] Analytics endpoints (count, revenue, avg delivery time).
 
 ### Admin
-- [ ] User management (list/suspend/verify rider KYC).
-- [ ] Orders monitoring + reassign rider.
-- [ ] System settings (delivery fee config).
+- [x] User management (list/suspend/verify rider KYC).
+- [x] Orders monitoring + reassign rider.
+- [x] System settings (delivery fee config).
 
 ## 4) Real-time (Channels + WebSockets)
 - [ ] WebSocket auth with token.
