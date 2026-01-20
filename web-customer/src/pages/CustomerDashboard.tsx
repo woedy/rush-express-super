@@ -1,443 +1,576 @@
-import { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Badge } from '@/components/ui/badge';
-import { 
-  Package, 
-  MapPin, 
-  Clock, 
-  CheckCircle,
-  XCircle,
-  Truck,
-  CreditCard,
-  User,
-  Plus,
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { LoadingState, EmptyState } from "@/components/State";
+import { apiClient } from "@/lib/api";
+import { useAuthStore } from "@/lib/auth";
+import { connectNotifications, connectOrderChat, connectOrderTracking } from "@/lib/ws";
+import type { Address, ChatMessage, Order, OrderQuote, OrderTrackingEvent } from "@/lib/types";
+import { cn } from "@/lib/utils";
+import {
   History,
-  Star
-} from 'lucide-react';
-import { cn } from '@/lib/utils';
+  MapPin,
+  MessageCircle,
+  Package,
+  Plus,
+  Send,
+  Truck,
+} from "lucide-react";
 
-interface Order {
-  id: string;
-  pickupAddress: string;
-  deliveryAddress: string;
-  itemDescription: string;
-  status: 'pending' | 'picked_up' | 'in_transit' | 'delivered' | 'cancelled';
-  createdAt: string;
-  estimatedTime: string;
-  cost: number;
-  rider?: {
-    name: string;
-    phone: string;
-    rating: number;
-  };
-}
+const paymentProviders = ["STRIPE", "PAYPAL"] as const;
+const addressSuggestions = [
+  "123 Market Street",
+  "456 Downtown Plaza",
+  "789 Sunset Avenue",
+  "101 Riverfront Road",
+];
+
+type ItemDraft = { inventory_item_id: string; quantity: string };
 
 const CustomerDashboard = () => {
-  const [activeTab, setActiveTab] = useState<'new-order' | 'orders' | 'profile'>('new-order');
-  const [orderForm, setOrderForm] = useState({
-    pickupAddress: '',
-    deliveryAddress: '',
-    itemDescription: '',
-    notes: ''
+  const tokens = useAuthStore((state) => state.tokens);
+  const user = useAuthStore((state) => state.user);
+
+  const [addresses, setAddresses] = useState<Address[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [trackingEvents, setTrackingEvents] = useState<OrderTrackingEvent[]>([]);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null);
+
+  const [isLoadingAddresses, setIsLoadingAddresses] = useState(true);
+  const [isLoadingOrders, setIsLoadingOrders] = useState(true);
+
+  const [addressForm, setAddressForm] = useState({
+    label: "",
+    address_line1: "",
+    address_line2: "",
+    city: "",
+    state: "",
+    postal_code: "",
+    country: "US",
   });
 
-  // Mock order data
-  const mockOrders: Order[] = [
-    {
-      id: 'ORD-001',
-      pickupAddress: '123 Mall Street, Downtown',
-      deliveryAddress: '456 Home Avenue, Suburbs',
-      itemDescription: 'Electronics - Smartphone',
-      status: 'delivered',
-      createdAt: '2024-01-20 14:30',
-      estimatedTime: '25 min',
-      cost: 12.50,
-      rider: {
-        name: 'John Doe',
-        phone: '+1 (555) 123-4567',
-        rating: 4.8
+  const [orderForm, setOrderForm] = useState({
+    merchant_branch_id: "",
+    dropoff_address_id: "",
+    payment_provider: paymentProviders[0],
+  });
+  const [items, setItems] = useState<ItemDraft[]>([{ inventory_item_id: "", quantity: "1" }]);
+  const [quote, setQuote] = useState<OrderQuote | null>(null);
+  const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
+
+  const [chatInput, setChatInput] = useState("");
+  const chatSocketRef = useRef<WebSocket | null>(null);
+
+  const selectedOrder = useMemo(
+    () => orders.find((order) => order.id === selectedOrderId) ?? null,
+    [orders, selectedOrderId]
+  );
+
+  useEffect(() => {
+    const loadAddresses = async () => {
+      setIsLoadingAddresses(true);
+      try {
+        const data = await apiClient.listAddresses();
+        setAddresses(data);
+      } finally {
+        setIsLoadingAddresses(false);
       }
-    },
-    {
-      id: 'ORD-002',
-      pickupAddress: 'Restaurant Plaza, Main St',
-      deliveryAddress: '789 Office Building, Business District',
-      itemDescription: 'Food - Lunch Order',
-      status: 'in_transit',
-      createdAt: '2024-01-21 12:15',
-      estimatedTime: '15 min',
-      cost: 8.75,
-      rider: {
-        name: 'Sarah Johnson',
-        phone: '+1 (555) 987-6543',
-        rating: 4.9
+    };
+
+    const loadOrders = async () => {
+      setIsLoadingOrders(true);
+      try {
+        const data = await apiClient.listOrders();
+        setOrders(data);
+      } finally {
+        setIsLoadingOrders(false);
       }
-    },
-    {
-      id: 'ORD-003',
-      pickupAddress: 'Pharmacy Corner, Health Blvd',
-      deliveryAddress: '321 Residential Lane, Uptown',
-      itemDescription: 'Medical Supplies',
-      status: 'pending',
-      createdAt: '2024-01-21 16:45',
-      estimatedTime: '30 min',
-      cost: 15.00
-    }
-  ];
+    };
 
-  const getStatusColor = (status: Order['status']) => {
-    switch (status) {
-      case 'pending': return 'bg-warning text-warning-foreground';
-      case 'picked_up': return 'bg-accent text-accent-foreground';
-      case 'in_transit': return 'bg-primary text-primary-foreground';
-      case 'delivered': return 'bg-success text-success-foreground';
-      case 'cancelled': return 'bg-destructive text-destructive-foreground';
-      default: return 'bg-muted text-muted-foreground';
-    }
-  };
+    loadAddresses();
+    loadOrders();
+  }, []);
 
-  const getStatusIcon = (status: Order['status']) => {
-    switch (status) {
-      case 'pending': return Clock;
-      case 'picked_up': return Package;
-      case 'in_transit': return Truck;
-      case 'delivered': return CheckCircle;
-      case 'cancelled': return XCircle;
-      default: return Clock;
-    }
-  };
+  useEffect(() => {
+    if (!tokens?.access) return;
+    const socket = connectNotifications(tokens.access, () => {
+      // notifications are already surfaced by toast on API errors
+    });
+    return () => socket.close();
+  }, [tokens?.access]);
 
-  const handleSubmitOrder = (e: React.FormEvent) => {
-    e.preventDefault();
-    // Mock order submission
-    console.log('Order submitted:', orderForm);
-    // Reset form
-    setOrderForm({
-      pickupAddress: '',
-      deliveryAddress: '',
-      itemDescription: '',
-      notes: ''
+  useEffect(() => {
+    if (!selectedOrderId) return;
+    const loadTracking = async () => {
+      const response = await apiClient.getTracking(selectedOrderId);
+      setTrackingEvents(response.events);
+    };
+    const loadChat = async () => {
+      const data = await apiClient.getChat(selectedOrderId);
+      setChatMessages(data);
+    };
+    loadTracking();
+    loadChat();
+  }, [selectedOrderId]);
+
+  useEffect(() => {
+    if (!tokens?.access || !selectedOrderId) return;
+    const trackingSocket = connectOrderTracking(tokens.access, selectedOrderId, (event) => {
+      setTrackingEvents((prev) => [...prev, event]);
+    });
+    return () => trackingSocket.close();
+  }, [tokens?.access, selectedOrderId]);
+
+  useEffect(() => {
+    if (!tokens?.access || !selectedOrderId) return;
+    const chatSocket = connectOrderChat(tokens.access, selectedOrderId, (message) => {
+      setChatMessages((prev) => [...prev, message as ChatMessage]);
+    });
+    chatSocketRef.current = chatSocket;
+    return () => {
+      chatSocket.close();
+      chatSocketRef.current = null;
+    };
+  }, [tokens?.access, selectedOrderId]);
+
+  const handleAddAddress = async (event: React.FormEvent) => {
+    event.preventDefault();
+    const address = await apiClient.createAddress(addressForm);
+    setAddresses((prev) => [...prev, address]);
+    setAddressForm({
+      label: "",
+      address_line1: "",
+      address_line2: "",
+      city: "",
+      state: "",
+      postal_code: "",
+      country: "US",
     });
   };
 
-  const tabs = [
-    { id: 'new-order' as const, label: 'New Order', icon: Plus },
-    { id: 'orders' as const, label: 'Order History', icon: History },
-    { id: 'profile' as const, label: 'Profile', icon: User },
-  ];
+  const handleQuote = async () => {
+    const payload = {
+      merchant_branch_id: Number(orderForm.merchant_branch_id),
+      dropoff_address_id: Number(orderForm.dropoff_address_id),
+      items: items.map((item) => ({
+        inventory_item_id: Number(item.inventory_item_id),
+        quantity: Number(item.quantity),
+      })),
+    };
+    const data = await apiClient.quoteOrder(payload);
+    setQuote(data);
+  };
+
+  const handleCreateOrder = async () => {
+    if (!quote) return;
+    setIsSubmittingOrder(true);
+    try {
+      const order = await apiClient.createOrder({
+        merchant_branch_id: quote.merchant_branch_id,
+        dropoff_address_id: quote.dropoff_address_id,
+        items: quote.items.map((item) => ({
+          inventory_item_id: item.inventory_item_id,
+          quantity: item.quantity,
+        })),
+        payment_provider: orderForm.payment_provider,
+      });
+      const confirmed = await apiClient.confirmOrder(order.id, "TEST_CONFIRM");
+      setOrders((prev) => [confirmed, ...prev]);
+      setSelectedOrderId(confirmed.id);
+      setQuote(null);
+    } finally {
+      setIsSubmittingOrder(false);
+    }
+  };
+
+  const handleReorder = async (orderId: number) => {
+    const newOrder = await apiClient.reorder(orderId);
+    setOrders((prev) => [newOrder, ...prev]);
+  };
+
+  const handleSendChat = (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!chatInput.trim() || !selectedOrderId) return;
+    if (chatSocketRef.current && chatSocketRef.current.readyState === WebSocket.OPEN) {
+      chatSocketRef.current.send(JSON.stringify({ message: chatInput }));
+      setChatInput("");
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-subtle">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold font-display text-gradient mb-2">Customer Dashboard</h1>
-          <p className="text-muted-foreground">Manage your deliveries and track orders in real-time</p>
+          <p className="text-muted-foreground">Welcome back, {user?.first_name || user?.username}.</p>
         </div>
 
-        {/* Navigation Tabs */}
-        <div className="flex space-x-1 bg-muted/50 p-1 rounded-lg mb-8 w-fit">
-          {tabs.map((tab) => {
-            const Icon = tab.icon;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={cn(
-                  "flex items-center space-x-2 px-4 py-2 rounded-md text-sm font-medium transition-smooth",
-                  activeTab === tab.id
-                    ? "bg-background text-primary shadow-soft"
-                    : "text-muted-foreground hover:text-foreground hover:bg-background/50"
+        <Tabs defaultValue="orders" className="space-y-6">
+          <TabsList>
+            <TabsTrigger value="orders" className="flex items-center gap-2">
+              <History className="h-4 w-4" /> Orders
+            </TabsTrigger>
+            <TabsTrigger value="new" className="flex items-center gap-2">
+              <Plus className="h-4 w-4" /> New Order
+            </TabsTrigger>
+            <TabsTrigger value="addresses" className="flex items-center gap-2">
+              <MapPin className="h-4 w-4" /> Addresses
+            </TabsTrigger>
+            <TabsTrigger value="tracking" className="flex items-center gap-2">
+              <Truck className="h-4 w-4" /> Tracking
+            </TabsTrigger>
+            <TabsTrigger value="chat" className="flex items-center gap-2">
+              <MessageCircle className="h-4 w-4" /> Chat
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="orders">
+            <Card>
+              <CardHeader>
+                <CardTitle>Order history</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {isLoadingOrders ? (
+                  <LoadingState title="Loading orders" description="Pulling your order history." />
+                ) : orders.length === 0 ? (
+                  <EmptyState title="No orders yet" description="Place your first delivery order." />
+                ) : (
+                  orders.map((order) => (
+                    <div
+                      key={order.id}
+                      className={cn(
+                        "rounded-lg border border-border/60 p-4 transition",
+                        selectedOrderId === order.id && "border-primary"
+                      )}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-semibold">Order #{order.id}</p>
+                          <p className="text-xs text-muted-foreground">{order.dropoff_address_line1}</p>
+                        </div>
+                        <Badge>{order.status}</Badge>
+                      </div>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setSelectedOrderId(order.id)}
+                        >
+                          View details
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={() => handleReorder(order.id)}>
+                          Reorder
+                        </Button>
+                      </div>
+                    </div>
+                  ))
                 )}
-              >
-                <Icon className="h-4 w-4" />
-                <span>{tab.label}</span>
-              </button>
-            );
-          })}
-        </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
 
-        <div className="grid lg:grid-cols-3 gap-8">
-          {/* Main Content */}
-          <div className="lg:col-span-2 space-y-6">
-            {activeTab === 'new-order' && (
-              <Card className="gradient-card shadow-medium border-border/50">
+          <TabsContent value="new">
+            <Card>
+              <CardHeader>
+                <CardTitle>Create a new order</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="grid gap-4 md:grid-cols-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="merchant-branch-id">Merchant branch ID</Label>
+                    <Input
+                      id="merchant-branch-id"
+                      value={orderForm.merchant_branch_id}
+                      onChange={(event) =>
+                        setOrderForm((prev) => ({ ...prev, merchant_branch_id: event.target.value }))
+                      }
+                      placeholder="e.g. 1"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="dropoff-address-id">Dropoff address ID</Label>
+                    <Input
+                      id="dropoff-address-id"
+                      value={orderForm.dropoff_address_id}
+                      onChange={(event) =>
+                        setOrderForm((prev) => ({ ...prev, dropoff_address_id: event.target.value }))
+                      }
+                      placeholder="e.g. 2"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="payment-provider">Payment provider</Label>
+                    <select
+                      id="payment-provider"
+                      className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                      value={orderForm.payment_provider}
+                      onChange={(event) =>
+                        setOrderForm((prev) => ({
+                          ...prev,
+                          payment_provider: event.target.value,
+                        }))
+                      }
+                    >
+                      {paymentProviders.map((provider) => (
+                        <option key={provider} value={provider}>
+                          {provider}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-semibold">Order items</h3>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() =>
+                        setItems((prev) => [...prev, { inventory_item_id: "", quantity: "1" }])
+                      }
+                    >
+                      Add item
+                    </Button>
+                  </div>
+                  {items.map((item, index) => (
+                    <div key={index} className="grid gap-4 md:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label htmlFor={`inventory-item-${index}`}>Inventory item ID</Label>
+                        <Input
+                          id={`inventory-item-${index}`}
+                          value={item.inventory_item_id}
+                          onChange={(event) =>
+                            setItems((prev) =>
+                              prev.map((entry, entryIndex) =>
+                                entryIndex === index
+                                  ? { ...entry, inventory_item_id: event.target.value }
+                                  : entry
+                              )
+                            )
+                          }
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor={`inventory-qty-${index}`}>Quantity</Label>
+                        <Input
+                          id={`inventory-qty-${index}`}
+                          value={item.quantity}
+                          onChange={(event) =>
+                            setItems((prev) =>
+                              prev.map((entry, entryIndex) =>
+                                entryIndex === index ? { ...entry, quantity: event.target.value } : entry
+                              )
+                            )
+                          }
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="flex gap-3">
+                  <Button variant="outline" onClick={handleQuote}>
+                    Get quote
+                  </Button>
+                  <Button onClick={handleCreateOrder} disabled={!quote || isSubmittingOrder}>
+                    {isSubmittingOrder ? "Submitting..." : "Confirm & Pay"}
+                  </Button>
+                </div>
+
+                {quote ? (
+                  <div className="rounded-lg border border-border/60 p-4 text-sm">
+                    <p className="font-semibold">Quote</p>
+                    <div className="mt-2 grid gap-2 md:grid-cols-3">
+                      <div>Subtotal: ${quote.subtotal}</div>
+                      <div>Delivery fee: ${quote.delivery_fee}</div>
+                      <div>Total: ${quote.total}</div>
+                    </div>
+                  </div>
+                ) : null}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="addresses">
+            <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
+              <Card>
                 <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
-                    <Package className="h-5 w-5 text-primary" />
-                    <span>Create New Order</span>
-                  </CardTitle>
+                  <CardTitle>Saved addresses</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {isLoadingAddresses ? (
+                    <LoadingState title="Loading addresses" description="Fetching saved locations." />
+                  ) : addresses.length === 0 ? (
+                    <EmptyState title="No addresses" description="Add your first drop-off address." />
+                  ) : (
+                    addresses.map((address) => (
+                      <div key={address.id} className="rounded-lg border border-border/60 p-3">
+                        <p className="text-sm font-semibold">{address.label || "Address"}</p>
+                        <p className="text-xs text-muted-foreground">{address.address_line1}</p>
+                      </div>
+                    ))
+                  )}
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader>
+                  <CardTitle>Add address</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <form onSubmit={handleSubmitOrder} className="space-y-6">
-                    <div className="grid md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="pickup" className="flex items-center space-x-1">
-                          <MapPin className="h-4 w-4 text-accent" />
-                          <span>Pickup Address</span>
-                        </Label>
-                        <Input
-                          id="pickup"
-                          placeholder="Enter pickup location"
-                          value={orderForm.pickupAddress}
-                          onChange={(e) => setOrderForm(prev => ({ ...prev, pickupAddress: e.target.value }))}
-                          className="border-border/50 focus:border-primary"
-                          required
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="delivery" className="flex items-center space-x-1">
-                          <MapPin className="h-4 w-4 text-secondary" />
-                          <span>Delivery Address</span>
-                        </Label>
-                        <Input
-                          id="delivery"
-                          placeholder="Enter delivery location"
-                          value={orderForm.deliveryAddress}
-                          onChange={(e) => setOrderForm(prev => ({ ...prev, deliveryAddress: e.target.value }))}
-                          className="border-border/50 focus:border-primary"
-                          required
-                        />
-                      </div>
-                    </div>
-                    
+                  <form onSubmit={handleAddAddress} className="space-y-3">
                     <div className="space-y-2">
-                      <Label htmlFor="item" className="flex items-center space-x-1">
-                        <Package className="h-4 w-4 text-primary" />
-                        <span>Item Description</span>
-                      </Label>
+                      <Label htmlFor="address-label">Label</Label>
                       <Input
-                        id="item"
-                        placeholder="What are you sending?"
-                        value={orderForm.itemDescription}
-                        onChange={(e) => setOrderForm(prev => ({ ...prev, itemDescription: e.target.value }))}
-                        className="border-border/50 focus:border-primary"
-                        required
+                        id="address-label"
+                        value={addressForm.label}
+                        onChange={(event) =>
+                          setAddressForm((prev) => ({ ...prev, label: event.target.value }))
+                        }
+                        placeholder="Home"
                       />
                     </div>
-                    
                     <div className="space-y-2">
-                      <Label htmlFor="notes">Special Instructions (Optional)</Label>
-                      <Textarea
-                        id="notes"
-                        placeholder="Any special delivery instructions..."
-                        value={orderForm.notes}
-                        onChange={(e) => setOrderForm(prev => ({ ...prev, notes: e.target.value }))}
-                        className="border-border/50 focus:border-primary"
-                        rows={3}
+                      <Label htmlFor="address-line1">Address line 1</Label>
+                      <Input
+                        id="address-line1"
+                        value={addressForm.address_line1}
+                        onChange={(event) =>
+                          setAddressForm((prev) => ({ ...prev, address_line1: event.target.value }))
+                        }
+                        list="address-suggestions"
+                        placeholder="123 Main St"
+                      />
+                      <datalist id="address-suggestions">
+                        {addressSuggestions.map((suggestion) => (
+                          <option key={suggestion} value={suggestion} />
+                        ))}
+                      </datalist>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="address-city">City</Label>
+                      <Input
+                        id="address-city"
+                        value={addressForm.city}
+                        onChange={(event) =>
+                          setAddressForm((prev) => ({ ...prev, city: event.target.value }))
+                        }
                       />
                     </div>
-
-                    <div className="bg-muted/50 p-4 rounded-lg border border-border/50">
-                      <div className="flex justify-between items-center mb-2">
-                        <span className="text-sm text-muted-foreground">Estimated Cost:</span>
-                        <span className="text-lg font-semibold text-primary">$12.50</span>
+                    <div className="grid gap-2 md:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label htmlFor="address-state">State</Label>
+                        <Input
+                          id="address-state"
+                          value={addressForm.state}
+                          onChange={(event) =>
+                            setAddressForm((prev) => ({ ...prev, state: event.target.value }))
+                          }
+                        />
                       </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm text-muted-foreground">Estimated Time:</span>
-                        <span className="text-sm font-medium text-foreground">25-30 minutes</span>
+                      <div className="space-y-2">
+                        <Label htmlFor="address-postal">Postal code</Label>
+                        <Input
+                          id="address-postal"
+                          value={addressForm.postal_code}
+                          onChange={(event) =>
+                            setAddressForm((prev) => ({ ...prev, postal_code: event.target.value }))
+                          }
+                        />
                       </div>
                     </div>
-
-                    <Button type="submit" variant="hero" size="lg" className="w-full">
-                      <Package className="mr-2 h-4 w-4" />
-                      Place Order
+                    <Button type="submit" className="w-full">
+                      Save address
                     </Button>
                   </form>
                 </CardContent>
               </Card>
-            )}
+            </div>
+          </TabsContent>
 
-            {activeTab === 'orders' && (
-              <div className="space-y-4">
-                {mockOrders.map((order) => {
-                  const StatusIcon = getStatusIcon(order.status);
-                  return (
-                    <Card key={order.id} className="gradient-card shadow-soft border-border/50 hover:shadow-medium transition-smooth">
-                      <CardContent className="p-6">
-                        <div className="flex items-start justify-between mb-4">
-                          <div className="flex items-center space-x-3">
-                            <div className="gradient-hero p-2 rounded-lg">
-                              <Package className="h-4 w-4 text-white" />
-                            </div>
-                            <div>
-                              <h3 className="font-semibold text-foreground">{order.id}</h3>
-                              <p className="text-sm text-muted-foreground">{order.createdAt}</p>
-                            </div>
-                          </div>
-                          <Badge className={cn("flex items-center space-x-1", getStatusColor(order.status))}>
-                            <StatusIcon className="h-3 w-3" />
-                            <span>{order.status.replace('_', ' ')}</span>
-                          </Badge>
-                        </div>
-                        
-                        <div className="grid md:grid-cols-2 gap-4 mb-4">
-                          <div>
-                            <p className="text-sm text-muted-foreground mb-1">From:</p>
-                            <p className="text-sm font-medium text-foreground">{order.pickupAddress}</p>
-                          </div>
-                          <div>
-                            <p className="text-sm text-muted-foreground mb-1">To:</p>
-                            <p className="text-sm font-medium text-foreground">{order.deliveryAddress}</p>
-                          </div>
-                        </div>
-                        
-                        <div className="grid md:grid-cols-3 gap-4 text-sm">
-                          <div>
-                            <p className="text-muted-foreground mb-1">Item:</p>
-                            <p className="font-medium text-foreground">{order.itemDescription}</p>
-                          </div>
-                          <div>
-                            <p className="text-muted-foreground mb-1">Time:</p>
-                            <p className="font-medium text-foreground">{order.estimatedTime}</p>
-                          </div>
-                          <div>
-                            <p className="text-muted-foreground mb-1">Cost:</p>
-                            <p className="font-medium text-primary">${order.cost.toFixed(2)}</p>
-                          </div>
-                        </div>
-                        
-                        {order.rider && (
-                          <div className="mt-4 p-3 bg-muted/50 rounded-lg border border-border/50">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center space-x-2">
-                                <Truck className="h-4 w-4 text-primary" />
-                                <span className="text-sm font-medium text-foreground">{order.rider.name}</span>
-                                <div className="flex items-center space-x-1">
-                                  <Star className="h-3 w-3 fill-secondary text-secondary" />
-                                  <span className="text-xs text-muted-foreground">{order.rider.rating}</span>
-                                </div>
-                              </div>
-                              <span className="text-xs text-muted-foreground">{order.rider.phone}</span>
-                            </div>
-                          </div>
-                        )}
-                      </CardContent>
-                    </Card>
-                  );
-                })}
-              </div>
-            )}
-
-            {activeTab === 'profile' && (
-              <Card className="gradient-card shadow-medium border-border/50">
-                <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
-                    <User className="h-5 w-5 text-primary" />
-                    <span>Profile Settings</span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="grid md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="name">Full Name</Label>
-                      <Input id="name" defaultValue="John Smith" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="email">Email Address</Label>
-                      <Input id="email" type="email" defaultValue="john@example.com" />
-                    </div>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="phone">Phone Number</Label>
-                    <Input id="phone" type="tel" defaultValue="+1 (555) 123-4567" />
-                  </div>
-
-                  <div className="space-y-4">
-                    <h3 className="font-semibold text-foreground flex items-center space-x-2">
-                      <MapPin className="h-4 w-4 text-accent" />
-                      <span>Saved Addresses</span>
-                    </h3>
-                    <div className="space-y-2">
-                      <div className="p-3 bg-muted/50 rounded-lg border border-border/50 flex items-center justify-between">
-                        <span className="text-sm text-foreground">Home - 123 Main St, City</span>
-                        <Button variant="ghost" size="sm">Edit</Button>
-                      </div>
-                      <div className="p-3 bg-muted/50 rounded-lg border border-border/50 flex items-center justify-between">
-                        <span className="text-sm text-foreground">Work - 456 Office Blvd, Downtown</span>
-                        <Button variant="ghost" size="sm">Edit</Button>
-                      </div>
-                      <Button variant="outline" size="sm" className="w-full">
-                        <Plus className="h-4 w-4 mr-2" />
-                        Add New Address
-                      </Button>
-                    </div>
-                  </div>
-
-                  <div className="space-y-4">
-                    <h3 className="font-semibold text-foreground flex items-center space-x-2">
-                      <CreditCard className="h-4 w-4 text-primary" />
-                      <span>Payment Methods</span>
-                    </h3>
-                    <div className="space-y-2">
-                      <div className="p-3 bg-muted/50 rounded-lg border border-border/50 flex items-center justify-between">
-                        <span className="text-sm text-foreground">**** **** **** 4567 (Default)</span>
-                        <Button variant="ghost" size="sm">Edit</Button>
-                      </div>
-                      <Button variant="outline" size="sm" className="w-full">
-                        <Plus className="h-4 w-4 mr-2" />
-                        Add Payment Method
-                      </Button>
-                    </div>
-                  </div>
-
-                  <Button variant="hero" className="w-full">
-                    Save Changes
-                  </Button>
-                </CardContent>
-              </Card>
-            )}
-          </div>
-
-          {/* Sidebar */}
-          <div className="space-y-6">
-            {/* Quick Stats */}
-            <Card className="gradient-card shadow-soft border-border/50">
+          <TabsContent value="tracking">
+            <Card>
               <CardHeader>
-                <CardTitle className="text-lg">Quick Stats</CardTitle>
+                <CardTitle>Order tracking</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Total Orders:</span>
-                  <span className="font-semibold text-primary">47</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">This Month:</span>
-                  <span className="font-semibold text-foreground">12</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Total Spent:</span>
-                  <span className="font-semibold text-secondary">$387.50</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Avg Rating:</span>
-                  <div className="flex items-center space-x-1">
-                    <Star className="h-3 w-3 fill-secondary text-secondary" />
-                    <span className="font-semibold text-foreground text-sm">4.9</span>
+                {!selectedOrder ? (
+                  <EmptyState title="Select an order" description="Choose an order to view tracking." />
+                ) : (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <Package className="h-4 w-4 text-primary" />
+                      <span className="text-sm font-semibold">Order #{selectedOrder.id}</span>
+                    </div>
+                    <div className="rounded-lg border border-border/60 p-4">
+                      <p className="text-xs text-muted-foreground mb-2">Tracking timeline</p>
+                      <div className="space-y-2">
+                        {trackingEvents.map((event) => (
+                          <div key={event.id} className="flex items-start gap-3">
+                            <Badge variant="outline">{event.status}</Badge>
+                            <div className="text-xs text-muted-foreground">
+                              {event.created_at}
+                              {event.latitude && event.longitude ? (
+                                <div>
+                                  Coordinates: {event.latitude}, {event.longitude}
+                                </div>
+                              ) : null}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                   </div>
-                </div>
+                )}
               </CardContent>
             </Card>
+          </TabsContent>
 
-            {/* Support */}
-            <Card className="gradient-secondary text-white shadow-orange-glow border-secondary/20">
-              <CardContent className="p-6 text-center">
-                <h3 className="font-semibold mb-2">Need Help?</h3>
-                <p className="text-sm text-white/90 mb-4">
-                  Our 24/7 support team is here to assist you with any questions.
-                </p>
-                <Button variant="outline" size="sm" className="bg-white/10 border-white/20 text-white hover:bg-white hover:text-secondary">
-                  Contact Support
-                </Button>
+          <TabsContent value="chat">
+            <Card>
+              <CardHeader>
+                <CardTitle>Chat with rider</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {!selectedOrder ? (
+                  <EmptyState title="Select an order" description="Choose an order to chat with your rider." />
+                ) : (
+                  <>
+                    <div className="space-y-3">
+                      {chatMessages.length === 0 ? (
+                        <EmptyState title="No messages yet" description="Start the conversation." />
+                      ) : (
+                        chatMessages.map((message) => (
+                          <div key={message.id} className="rounded-lg border border-border/60 p-3">
+                            <p className="text-xs text-muted-foreground">{message.created_at}</p>
+                            <p className="text-sm">{message.message}</p>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                    <form onSubmit={handleSendChat} className="flex gap-2">
+                      <Textarea
+                        value={chatInput}
+                        onChange={(event) => setChatInput(event.target.value)}
+                        placeholder="Type a message"
+                        className="min-h-[44px]"
+                      />
+                      <Button type="submit" size="icon" className="mt-auto">
+                        <Send className="h-4 w-4" />
+                      </Button>
+                    </form>
+                  </>
+                )}
               </CardContent>
             </Card>
-          </div>
-        </div>
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );
