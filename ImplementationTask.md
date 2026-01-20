@@ -28,11 +28,11 @@ Use this checklist as the authoritative execution plan. Check items only after t
 
 ## 3) Core REST APIs
 ### Auth
-- [ ] POST `/auth/register` (role-specific rules).
-- [ ] POST `/auth/login`.
-- [ ] POST `/auth/refresh`.
-- [ ] POST `/auth/logout`.
-- [ ] GET `/me`.
+- [x] POST `/auth/register` (role-specific rules).
+- [x] POST `/auth/login`.
+- [x] POST `/auth/refresh`.
+- [x] POST `/auth/logout`.
+- [x] GET `/me`.
 
 ### Customer
 - [ ] CRUD addresses.
