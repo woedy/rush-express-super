@@ -23,3 +23,18 @@ class AuditLog(models.Model):
 
     def __str__(self) -> str:
         return f"{self.action} ({self.entity})"
+
+
+class DeliverySetting(models.Model):
+    class Keys(models.TextChoices):
+        DELIVERY_FEE_FLAT = "DELIVERY_FEE_FLAT", "Delivery fee flat"
+
+    key = models.CharField(max_length=64, choices=Keys.choices, unique=True)
+    value = models.CharField(max_length=255, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        indexes = [models.Index(fields=["key"])]
+
+    def __str__(self) -> str:
+        return f"{self.key}"
