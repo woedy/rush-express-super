@@ -28,61 +28,61 @@ Use this checklist as the authoritative execution plan. Check items only after t
 
 ## 3) Core REST APIs
 ### Auth
-- [ ] POST `/auth/register` (role-specific rules).
-- [ ] POST `/auth/login`.
-- [ ] POST `/auth/refresh`.
-- [ ] POST `/auth/logout`.
-- [ ] GET `/me`.
+- [x] POST `/auth/register` (role-specific rules).
+- [x] POST `/auth/login`.
+- [x] POST `/auth/refresh`.
+- [x] POST `/auth/logout`.
+- [x] GET `/me`.
 
 ### Customer
-- [ ] CRUD addresses.
-- [ ] Quote + create order + confirm payment.
-- [ ] Order history + reorder.
-- [ ] Order tracking (REST).
-- [ ] Chat endpoints (REST fetch).
+- [x] CRUD addresses.
+- [x] Quote + create order + confirm payment.
+- [x] Order history + reorder.
+- [x] Order tracking (REST).
+- [x] Chat endpoints (REST fetch).
 
 ### Rider
-- [ ] Availability online/offline.
-- [ ] Available orders list.
-- [ ] Accept assignment.
-- [ ] Update status (picked up, in transit, delivered).
-- [ ] Location update endpoint.
-- [ ] Earnings endpoints.
+- [x] Availability online/offline.
+- [x] Available orders list.
+- [x] Accept assignment.
+- [x] Update status (picked up, in transit, delivered).
+- [x] Location update endpoint.
+- [x] Earnings endpoints.
 
 ### Merchant
-- [ ] Branch CRUD.
-- [ ] Inventory CRUD.
-- [ ] Orders dashboard status updates.
-- [ ] Analytics endpoints (count, revenue, avg delivery time).
+- [x] Branch CRUD.
+- [x] Inventory CRUD.
+- [x] Orders dashboard status updates.
+- [x] Analytics endpoints (count, revenue, avg delivery time).
 
 ### Admin
-- [ ] User management (list/suspend/verify rider KYC).
-- [ ] Orders monitoring + reassign rider.
-- [ ] System settings (delivery fee config).
+- [x] User management (list/suspend/verify rider KYC).
+- [x] Orders monitoring + reassign rider.
+- [x] System settings (delivery fee config).
 
 ## 4) Real-time (Channels + WebSockets)
-- [ ] WebSocket auth with token.
-- [ ] `/ws/notifications/` per-user channel.
-- [ ] `/ws/orders/{order_id}/tracking/` real-time status + location events.
-- [ ] `/ws/orders/{order_id}/chat/` live messaging + persistence.
-- [ ] Celery tasks for notifications + status updates.
+- [x] WebSocket auth with token.
+- [x] `/ws/notifications/` per-user channel.
+- [x] `/ws/orders/{order_id}/tracking/` real-time status + location events.
+- [x] `/ws/orders/{order_id}/chat/` live messaging + persistence.
+- [x] Celery tasks for notifications + status updates.
 
 ## 5) Shared Web Infrastructure
-- [ ] Shared TypeScript API client with typed DTOs and error handling.
-- [ ] Auth state management (Redux Toolkit or Zustand) and route guards.
-- [ ] Global error handling (toast) + loading/empty states.
-- [ ] WebSocket client integration for tracking/notifications.
+- [x] Shared TypeScript API client with typed DTOs and error handling.
+- [x] Auth state management (Redux Toolkit or Zustand) and route guards.
+- [x] Global error handling (toast) + loading/empty states.
+- [x] WebSocket client integration for tracking/notifications.
 
 ## 6) Web Customer App
-- [ ] Auth pages + protected routes.
-- [ ] Address management + autocomplete stub.
-- [ ] Create order flow (quote -> confirm -> payment).
-- [ ] Order tracking timeline + map coordinates.
-- [ ] Chat with rider UI (persisted history + real-time updates).
-- [ ] Order history + reorder flow.
-- [ ] PWA enabled.
-- [ ] Tests: login flow, create order flow (RTL/Jest).
-- [ ] Playwright E2E: login -> create order -> see status.
+- [x] Auth pages + protected routes.
+- [x] Address management + autocomplete stub.
+- [x] Create order flow (quote -> confirm -> payment).
+- [x] Order tracking timeline + map coordinates.
+- [x] Chat with rider UI (persisted history + real-time updates).
+- [x] Order history + reorder flow.
+- [x] PWA enabled.
+- [x] Tests: login flow, create order flow (RTL/Jest).
+- [x] Playwright E2E: login -> create order -> see status.
 
 ## 7) Web Rider App
 - [ ] Auth pages + protected routes.
