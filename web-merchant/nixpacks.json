@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "phases": {
+    "setup": {
+      "nixPkgs": ["nodejs_20", "npm"],
+      "nixOverlays": []
+    },
+    "build": {
+      "cmds": ["npm install", "npm run build"]
+    },
+    "start": {
+      "cmd": "node server.js"
+    }
+  },
+  "variables": {
+    "PORT": "8080",
+    "NIXPACKS_NO_CADDY": "1"
+  }
+}

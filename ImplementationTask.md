@@ -93,12 +93,12 @@ Use this checklist as the authoritative execution plan. Check items only after t
 - [x] Tests: rider accept flow (RTL/Jest).
 
 ## 8) Web Merchant App
-- [ ] Auth pages + protected routes.
-- [ ] Branch management.
-- [ ] Inventory CRUD.
-- [ ] Orders queue + status management.
-- [ ] Analytics dashboard (basic charts).
-- [ ] Tests: key inventory/order flows.
+- [x] Auth pages + protected routes.
+- [x] Branch management.
+- [x] Inventory CRUD.
+- [x] Orders queue + status management.
+- [x] Analytics dashboard (basic charts).
+- [x] Tests: key inventory/order flows.
 
 ## 9) Web Admin App
 - [ ] Auth pages + protected routes.
