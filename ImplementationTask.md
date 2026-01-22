@@ -115,9 +115,9 @@ Use this checklist as the authoritative execution plan. Check items only after t
 - [x] Offline-first caching (local storage) for core flows.
 
 ## 11) Docker + Deployment
-- [ ] docker-compose services: backend, postgres, redis, celery-worker, celery-beat, nginx, web apps.
-- [ ] Env templates and Coolify-friendly port configuration.
-- [ ] Healthchecks + safe migration strategy + static/media volumes.
+- [x] docker-compose services: backend, postgres, redis, celery-worker, celery-beat, nginx, web apps.
+- [x] Env templates and Coolify-friendly port configuration.
+- [x] Healthchecks + safe migration strategy + static/media volumes.
 
 ## 12) CI + Quality Gates
 - [ ] GitHub Actions workflow: lint + test backend + test web-customer + web-rider.
