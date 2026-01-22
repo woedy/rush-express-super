@@ -101,11 +101,11 @@ Use this checklist as the authoritative execution plan. Check items only after t
 - [x] Tests: key inventory/order flows.
 
 ## 9) Web Admin App
-- [ ] Auth pages + protected routes.
-- [ ] Users table + suspend/verify actions.
-- [ ] Orders table + reassign workflow.
-- [ ] Analytics dashboard.
-- [ ] Tests: key admin flows.
+- [x] Auth pages + protected routes.
+- [x] Users table + suspend/verify actions.
+- [x] Orders table + reassign workflow.
+- [x] Analytics dashboard.
+- [x] Tests: key admin flows.
 
 ## 10) Mobile (Flutter)
 - [ ] Customer app: auth + order list/detail + tracking status updates.

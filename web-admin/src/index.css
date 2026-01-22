@@ -1,0 +1,191 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Rush Express Design System - Modern Delivery Platform */
+
+@layer base {
+  :root {
+    /* Core Brand Colors */
+    --background: 0 0% 100%;
+    --foreground: 220 15% 15%;
+
+    /* Rush Express Brand Palette */
+    --primary: 220 85% 25%; /* Deep Navy Blue - Trust & Reliability */
+    --primary-foreground: 0 0% 98%;
+    --primary-glow: 220 85% 35%;
+    
+    --secondary: 25 95% 53%; /* Energetic Orange - Speed & Action */
+    --secondary-foreground: 0 0% 98%;
+    --secondary-glow: 25 95% 63%;
+
+    /* Supporting Colors */
+    --accent: 200 85% 45%; /* Modern Teal */
+    --accent-foreground: 0 0% 98%;
+    
+    --muted: 220 15% 96%;
+    --muted-foreground: 220 10% 45%;
+    
+    --card: 0 0% 100%;
+    --card-foreground: 220 15% 15%;
+
+    /* Status Colors */
+    --success: 142 76% 36%;
+    --success-foreground: 0 0% 98%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 98%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+
+    /* Interface Elements */
+    --border: 220 15% 90%;
+    --input: 220 15% 95%;
+    --ring: 220 85% 25%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 15% 15%;
+
+    /* Design System Gradients */
+    --gradient-hero: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary-glow)));
+    --gradient-secondary: linear-gradient(135deg, hsl(var(--secondary)), hsl(var(--secondary-glow)));
+    --gradient-subtle: linear-gradient(180deg, hsl(0 0% 100%), hsl(220 15% 98%));
+    --gradient-card: linear-gradient(145deg, hsl(0 0% 100%), hsl(220 15% 99%));
+
+    /* Shadows & Effects */
+    --shadow-soft: 0 4px 24px -8px hsl(var(--primary) / 0.1);
+    --shadow-medium: 0 8px 32px -8px hsl(var(--primary) / 0.15);
+    --shadow-strong: 0 16px 48px -12px hsl(var(--primary) / 0.2);
+    --shadow-glow: 0 0 32px hsl(var(--primary) / 0.15);
+    --shadow-orange-glow: 0 0 32px hsl(var(--secondary) / 0.2);
+
+    /* Animations */
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-bounce: all 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+
+    --radius: 0.75rem;
+    --radius-lg: 1rem;
+    --radius-xl: 1.5rem;
+
+    /* Sidebar */
+    --sidebar-background: 220 15% 98%;
+    --sidebar-foreground: 220 15% 25%;
+    --sidebar-primary: 220 85% 25%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 220 15% 95%;
+    --sidebar-accent-foreground: 220 15% 25%;
+    --sidebar-border: 220 15% 90%;
+    --sidebar-ring: 220 85% 25%;
+  }
+
+  .dark {
+    /* Dark mode for Rush Express */
+    --background: 220 20% 8%;
+    --foreground: 220 15% 95%;
+
+    --card: 220 20% 10%;
+    --card-foreground: 220 15% 95%;
+
+    --popover: 220 20% 10%;
+    --popover-foreground: 220 15% 95%;
+
+    --primary: 220 85% 65%;
+    --primary-foreground: 220 20% 8%;
+    --primary-glow: 220 85% 75%;
+
+    --secondary: 25 95% 58%;
+    --secondary-foreground: 220 20% 8%;
+    --secondary-glow: 25 95% 68%;
+
+    --accent: 200 85% 55%;
+    --accent-foreground: 220 20% 8%;
+
+    --muted: 220 20% 15%;
+    --muted-foreground: 220 15% 65%;
+
+    --success: 142 76% 46%;
+    --warning: 38 92% 60%;
+    --destructive: 0 84% 65%;
+
+    --border: 220 20% 20%;
+    --input: 220 20% 15%;
+    --ring: 220 85% 65%;
+
+    /* Dark gradients */
+    --gradient-hero: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary-glow)));
+    --gradient-secondary: linear-gradient(135deg, hsl(var(--secondary)), hsl(var(--secondary-glow)));
+    --gradient-subtle: linear-gradient(180deg, hsl(220 20% 8%), hsl(220 20% 12%));
+    --gradient-card: linear-gradient(145deg, hsl(220 20% 10%), hsl(220 20% 12%));
+
+    --sidebar-background: 220 20% 10%;
+    --sidebar-foreground: 220 15% 85%;
+    --sidebar-primary: 220 85% 65%;
+    --sidebar-primary-foreground: 220 20% 8%;
+    --sidebar-accent: 220 20% 15%;
+    --sidebar-accent-foreground: 220 15% 85%;
+    --sidebar-border: 220 20% 20%;
+    --sidebar-ring: 220 85% 65%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans;
+  }
+}
+
+@layer utilities {
+  /* Custom Rush Express Utilities */
+  .gradient-hero {
+    background: var(--gradient-hero);
+  }
+  
+  .gradient-secondary {
+    background: var(--gradient-secondary);
+  }
+  
+  .gradient-subtle {
+    background: var(--gradient-subtle);
+  }
+  
+  .gradient-card {
+    background: var(--gradient-card);
+  }
+  
+  .shadow-soft {
+    box-shadow: var(--shadow-soft);
+  }
+  
+  .shadow-medium {
+    box-shadow: var(--shadow-medium);
+  }
+  
+  .shadow-strong {
+    box-shadow: var(--shadow-strong);
+  }
+  
+  .shadow-glow {
+    box-shadow: var(--shadow-glow);
+  }
+  
+  .shadow-orange-glow {
+    box-shadow: var(--shadow-orange-glow);
+  }
+  
+  .transition-smooth {
+    transition: var(--transition-smooth);
+  }
+  
+  .transition-bounce {
+    transition: var(--transition-bounce);
+  }
+  
+  .text-gradient {
+    background: var(--gradient-hero);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+}
