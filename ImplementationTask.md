@@ -108,11 +108,11 @@ Use this checklist as the authoritative execution plan. Check items only after t
 - [x] Tests: key admin flows.
 
 ## 10) Mobile (Flutter)
-- [ ] Customer app: auth + order list/detail + tracking status updates.
-- [ ] Rider app: auth + active order + status updates.
-- [ ] Merchant app: auth + orders list + status updates.
-- [ ] Firebase push notifications setup + documentation.
-- [ ] Offline-first caching (local storage) for core flows.
+- [x] Customer app: auth + order list/detail + tracking status updates.
+- [x] Rider app: auth + active order + status updates.
+- [x] Merchant app: auth + orders list + status updates.
+- [x] Firebase push notifications setup + documentation.
+- [x] Offline-first caching (local storage) for core flows.
 
 ## 11) Docker + Deployment
 - [ ] docker-compose services: backend, postgres, redis, celery-worker, celery-beat, nginx, web apps.
