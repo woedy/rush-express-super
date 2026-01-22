@@ -85,12 +85,12 @@ Use this checklist as the authoritative execution plan. Check items only after t
 - [x] Playwright E2E: login -> create order -> see status.
 
 ## 7) Web Rider App
-- [ ] Auth pages + protected routes.
-- [ ] Availability toggle + available orders board.
-- [ ] Accept order + status update flow.
-- [ ] Live location updates to backend.
-- [ ] Earnings dashboard.
-- [ ] Tests: rider accept flow (RTL/Jest).
+- [x] Auth pages + protected routes.
+- [x] Availability toggle + available orders board.
+- [x] Accept order + status update flow.
+- [x] Live location updates to backend.
+- [x] Earnings dashboard.
+- [x] Tests: rider accept flow (RTL/Jest).
 
 ## 8) Web Merchant App
 - [ ] Auth pages + protected routes.
