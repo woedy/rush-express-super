@@ -12,6 +12,7 @@ import {
   Star,
   ArrowRight,
   Users,
+  Package,
   TrendingUp,
 } from 'lucide-react';
 import heroImage from '@/assets/hero-delivery.jpg';

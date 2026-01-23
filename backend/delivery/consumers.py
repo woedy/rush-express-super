@@ -2,13 +2,14 @@ from __future__ import annotations
 
 from channels.db import database_sync_to_async
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
-from django.contrib.auth.models import AnonymousUser
 
 from .models import ChatMessage, Order
 
 
 @database_sync_to_async
 def get_order_for_user(order_id, user):
+    from django.contrib.auth.models import AnonymousUser
+
     if isinstance(user, AnonymousUser) or not user.is_authenticated:
         return None
     try:
