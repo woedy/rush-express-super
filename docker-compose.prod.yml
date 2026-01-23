@@ -5,10 +5,14 @@ services:
     image: postgres:15-alpine
     env_file:
       - envs/postgres.env
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-rush_express}
+      POSTGRES_USER: ${POSTGRES_USER:-rush_express}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-rush_express}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-rush_express} -d $${POSTGRES_DB:-rush_express}"]
       interval: 10s
       timeout: 5s
       retries: 5
