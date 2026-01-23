@@ -4,13 +4,14 @@ from urllib.parse import parse_qs
 
 from channels.db import database_sync_to_async
 from django.contrib.auth import get_user_model
-from django.contrib.auth.models import AnonymousUser
 from rest_framework_simplejwt.exceptions import TokenError
-from rest_framework_simplejwt.tokens import AccessToken
 
 
 @database_sync_to_async
 def get_user_for_token(token: str):
+    from django.contrib.auth.models import AnonymousUser
+    from rest_framework_simplejwt.tokens import AccessToken
+
     try:
         validated = AccessToken(token)
     except TokenError:
@@ -30,6 +31,8 @@ class JwtAuthMiddleware:
         self.inner = inner
 
     async def __call__(self, scope, receive, send):
+        from django.contrib.auth.models import AnonymousUser
+
         token = None
         query_string = scope.get("query_string", b"").decode("utf-8")
         if query_string:

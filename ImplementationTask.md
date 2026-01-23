@@ -85,39 +85,39 @@ Use this checklist as the authoritative execution plan. Check items only after t
 - [x] Playwright E2E: login -> create order -> see status.
 
 ## 7) Web Rider App
-- [ ] Auth pages + protected routes.
-- [ ] Availability toggle + available orders board.
-- [ ] Accept order + status update flow.
-- [ ] Live location updates to backend.
-- [ ] Earnings dashboard.
-- [ ] Tests: rider accept flow (RTL/Jest).
+- [x] Auth pages + protected routes.
+- [x] Availability toggle + available orders board.
+- [x] Accept order + status update flow.
+- [x] Live location updates to backend.
+- [x] Earnings dashboard.
+- [x] Tests: rider accept flow (RTL/Jest).
 
 ## 8) Web Merchant App
-- [ ] Auth pages + protected routes.
-- [ ] Branch management.
-- [ ] Inventory CRUD.
-- [ ] Orders queue + status management.
-- [ ] Analytics dashboard (basic charts).
-- [ ] Tests: key inventory/order flows.
+- [x] Auth pages + protected routes.
+- [x] Branch management.
+- [x] Inventory CRUD.
+- [x] Orders queue + status management.
+- [x] Analytics dashboard (basic charts).
+- [x] Tests: key inventory/order flows.
 
 ## 9) Web Admin App
-- [ ] Auth pages + protected routes.
-- [ ] Users table + suspend/verify actions.
-- [ ] Orders table + reassign workflow.
-- [ ] Analytics dashboard.
-- [ ] Tests: key admin flows.
+- [x] Auth pages + protected routes.
+- [x] Users table + suspend/verify actions.
+- [x] Orders table + reassign workflow.
+- [x] Analytics dashboard.
+- [x] Tests: key admin flows.
 
 ## 10) Mobile (Flutter)
-- [ ] Customer app: auth + order list/detail + tracking status updates.
-- [ ] Rider app: auth + active order + status updates.
-- [ ] Merchant app: auth + orders list + status updates.
-- [ ] Firebase push notifications setup + documentation.
-- [ ] Offline-first caching (local storage) for core flows.
+- [x] Customer app: auth + order list/detail + tracking status updates.
+- [x] Rider app: auth + active order + status updates.
+- [x] Merchant app: auth + orders list + status updates.
+- [x] Firebase push notifications setup + documentation.
+- [x] Offline-first caching (local storage) for core flows.
 
 ## 11) Docker + Deployment
-- [ ] docker-compose services: backend, postgres, redis, celery-worker, celery-beat, nginx, web apps.
-- [ ] Env templates and Coolify-friendly port configuration.
-- [ ] Healthchecks + safe migration strategy + static/media volumes.
+- [x] docker-compose services: backend, postgres, redis, celery-worker, celery-beat, nginx, web apps.
+- [x] Env templates and Coolify-friendly port configuration.
+- [x] Healthchecks + safe migration strategy + static/media volumes.
 
 ## 12) CI + Quality Gates
 - [ ] GitHub Actions workflow: lint + test backend + test web-customer + web-rider.

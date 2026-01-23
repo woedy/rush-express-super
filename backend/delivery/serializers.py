@@ -166,9 +166,32 @@ class MerchantOrderStatusSerializer(serializers.Serializer):
 
 
 class AdminUserSerializer(serializers.ModelSerializer):
+    rider_profile_id = serializers.SerializerMethodField()
+    rider_kyc_status = serializers.SerializerMethodField()
+
     class Meta:
         model = get_user_model()
-        fields = ("id", "username", "email", "first_name", "last_name", "role", "is_suspended")
+        fields = (
+            "id",
+            "username",
+            "email",
+            "first_name",
+            "last_name",
+            "role",
+            "is_suspended",
+            "rider_profile_id",
+            "rider_kyc_status",
+        )
+
+    def get_rider_profile_id(self, obj):
+        if hasattr(obj, "riderprofile"):
+            return obj.riderprofile.id
+        return None
+
+    def get_rider_kyc_status(self, obj):
+        if hasattr(obj, "riderprofile"):
+            return obj.riderprofile.kyc_status
+        return None
 
 
 class AdminUserStatusSerializer(serializers.Serializer):
