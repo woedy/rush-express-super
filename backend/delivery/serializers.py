@@ -32,7 +32,7 @@ class AddressSerializer(serializers.ModelSerializer):
             "address_line2",
             "city",
             "state",
-            "postal_code",
+            "postal_code", 
             "country",
             "latitude",
             "longitude",

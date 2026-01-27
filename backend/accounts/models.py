@@ -11,3 +11,4 @@ class User(AbstractUser):
 
     role = models.CharField(max_length=20, choices=Roles.choices, default=Roles.CUSTOMER)
     is_suspended = models.BooleanField(default=False)
+    is_verified = models.BooleanField(default=False)

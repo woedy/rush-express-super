@@ -17,6 +17,7 @@ export interface User {
   last_name: string;
   role: UserRole;
   is_suspended: boolean;
+  is_verified: boolean;
   profile?: UserProfile | null;
 }
 

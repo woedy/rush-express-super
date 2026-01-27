@@ -131,3 +131,16 @@ class LogoutSerializer(serializers.Serializer):
             token.blacklist()
         except TokenError as exc:
             raise serializers.ValidationError({"refresh": "Invalid token."}) from exc
+
+
+class VerifyEmailSerializer(serializers.Serializer):
+    token = serializers.CharField()
+
+
+class PasswordResetSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+
+
+class PasswordResetConfirmSerializer(serializers.Serializer):
+    token = serializers.CharField()
+    new_password = serializers.CharField(write_only=True)

@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { 
-  Menu, 
-  X, 
-  Truck, 
-  User, 
-  Store, 
+import {
+  Menu,
+  X,
+  Truck,
+  User,
+  Store,
   Shield,
   Home,
   Phone,
@@ -95,13 +95,13 @@ const Navigation = () => {
                 );
               })}
             </div>
-            
+
             <div className="flex items-center space-x-2">
               <Button asChild variant="ghost" size="sm">
-                <Link to="/auth/login">Login</Link>
+                <Link to="/login">Login</Link>
               </Button>
               <Button asChild variant="cta" size="sm">
-                <Link to="/auth/signup">Sign Up</Link>
+                <Link to="/register">Sign Up</Link>
               </Button>
             </div>
           </div>
@@ -141,7 +141,7 @@ const Navigation = () => {
                   </Link>
                 );
               })}
-              
+
               <div className="pt-4 border-t border-border/50 mt-4">
                 <p className="text-xs font-semibold text-muted-foreground px-3 mb-2">DASHBOARDS</p>
                 {dashboardLinks.map((link) => {
@@ -165,13 +165,13 @@ const Navigation = () => {
                   );
                 })}
               </div>
-              
+
               <div className="pt-4 border-t border-border/50 mt-4 space-y-2">
                 <Button asChild variant="ghost" size="sm" className="w-full justify-start">
-                  <Link to="/auth/login" onClick={() => setIsOpen(false)}>Login</Link>
+                  <Link to="/login" onClick={() => setIsOpen(false)}>Login</Link>
                 </Button>
                 <Button asChild variant="cta" size="sm" className="w-full justify-start">
-                  <Link to="/auth/signup" onClick={() => setIsOpen(false)}>Sign Up</Link>
+                  <Link to="/register" onClick={() => setIsOpen(false)}>Sign Up</Link>
                 </Button>
               </div>
             </div>
