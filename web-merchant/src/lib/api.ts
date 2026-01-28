@@ -201,4 +201,4 @@ class ApiClient {
   }
 }
 
-export const apiClient = new ApiClient(API_BASE_URL, () => localStorage.getItem("access_token"));
+export const apiClient = new ApiClient(API_BASE_URL, () => localStorage.getItem("merchant_access_token"));

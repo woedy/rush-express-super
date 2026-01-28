@@ -23,11 +23,11 @@ export const useAuthStore = create<AuthState>()(
       isHydrated: false,
       setTokens: (tokens) => {
         if (tokens) {
-          localStorage.setItem("access_token", tokens.access);
-          localStorage.setItem("refresh_token", tokens.refresh);
+          localStorage.setItem("merchant_access_token", tokens.access);
+          localStorage.setItem("merchant_refresh_token", tokens.refresh);
         } else {
-          localStorage.removeItem("access_token");
-          localStorage.removeItem("refresh_token");
+          localStorage.removeItem("merchant_access_token");
+          localStorage.removeItem("merchant_refresh_token");
         }
         set({ tokens });
       },
@@ -57,7 +57,7 @@ export const useAuthStore = create<AuthState>()(
       },
     }),
     {
-      name: "rush-express-auth",
+      name: "rush-express-merchant-auth",
       partialize: (state) => ({ tokens: state.tokens, user: state.user }),
     }
   )

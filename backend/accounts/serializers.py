@@ -34,17 +34,24 @@ class MerchantProfileSerializer(serializers.ModelSerializer):
 
 class MeSerializer(serializers.ModelSerializer):
     profile = serializers.SerializerMethodField()
+    role = serializers.SerializerMethodField()
 
     class Meta:
         model = User
         fields = ("id", "username", "email", "first_name", "last_name", "role", "is_suspended", "profile")
 
+    def get_role(self, obj):
+        if obj.is_superuser or obj.is_staff:
+            return User.Roles.ADMIN
+        return obj.role
+
     def get_profile(self, obj):
-        if obj.role == User.Roles.CUSTOMER and hasattr(obj, "customerprofile"):
+        role = self.get_role(obj)
+        if role == User.Roles.CUSTOMER and hasattr(obj, "customerprofile"):
             return CustomerProfileSerializer(obj.customerprofile).data
-        if obj.role == User.Roles.RIDER and hasattr(obj, "riderprofile"):
+        if role == User.Roles.RIDER and hasattr(obj, "riderprofile"):
             return RiderProfileSerializer(obj.riderprofile).data
-        if obj.role == User.Roles.MERCHANT and hasattr(obj, "merchantprofile"):
+        if role == User.Roles.MERCHANT and hasattr(obj, "merchantprofile"):
             return MerchantProfileSerializer(obj.merchantprofile).data
         return None
 

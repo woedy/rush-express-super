@@ -17,7 +17,7 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
     return <Navigate to="/" replace />;
   }
 
-  if (user.role !== "ADMIN") {
+  if (user.role?.toUpperCase() !== "ADMIN") {
     return <Navigate to="/" replace />;
   }
 

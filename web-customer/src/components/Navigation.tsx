@@ -5,9 +5,6 @@ import {
   Menu,
   X,
   Truck,
-  User,
-  Store,
-  Shield,
   Home,
   Phone,
   Info
@@ -24,13 +21,6 @@ const Navigation = () => {
     { path: '/', label: 'Home', icon: Home },
     { path: '/about', label: 'About', icon: Info },
     { path: '/contact', label: 'Contact', icon: Phone },
-  ];
-
-  const dashboardLinks = [
-    { path: '/customer', label: 'Customer', icon: User, color: 'text-primary' },
-    { path: '/merchant', label: 'Merchant', icon: Store, color: 'text-accent' },
-    { path: '/rider', label: 'Rider', icon: Truck, color: 'text-secondary' },
-    { path: '/admin', label: 'Admin', icon: Shield, color: 'text-destructive' },
   ];
 
   return (
@@ -72,38 +62,14 @@ const Navigation = () => {
             })}
           </div>
 
-          {/* Dashboard Links & Auth Buttons */}
-          <div className="hidden md:flex items-center space-x-4">
-            <div className="flex items-center space-x-2 bg-muted/50 rounded-lg p-1">
-              {dashboardLinks.map((link) => {
-                const Icon = link.icon;
-                return (
-                  <Link
-                    key={link.path}
-                    to={link.path}
-                    className={cn(
-                      "flex items-center space-x-1 px-3 py-2 rounded-md text-xs font-medium transition-smooth",
-                      link.color,
-                      isActive(link.path)
-                        ? "bg-background shadow-soft"
-                        : "hover:bg-background/50"
-                    )}
-                  >
-                    <Icon className="h-3 w-3" />
-                    <span className="hidden lg:inline">{link.label}</span>
-                  </Link>
-                );
-              })}
-            </div>
-
-            <div className="flex items-center space-x-2">
-              <Button asChild variant="ghost" size="sm">
-                <Link to="/login">Login</Link>
-              </Button>
-              <Button asChild variant="cta" size="sm">
-                <Link to="/register">Sign Up</Link>
-              </Button>
-            </div>
+          {/* Auth Buttons */}
+          <div className="hidden md:flex items-center space-x-2">
+            <Button asChild variant="ghost" size="sm">
+              <Link to="/login">Login</Link>
+            </Button>
+            <Button asChild variant="cta" size="sm">
+              <Link to="/register">Sign Up</Link>
+            </Button>
           </div>
 
           {/* Mobile menu button */}
@@ -141,30 +107,6 @@ const Navigation = () => {
                   </Link>
                 );
               })}
-
-              <div className="pt-4 border-t border-border/50 mt-4">
-                <p className="text-xs font-semibold text-muted-foreground px-3 mb-2">DASHBOARDS</p>
-                {dashboardLinks.map((link) => {
-                  const Icon = link.icon;
-                  return (
-                    <Link
-                      key={link.path}
-                      to={link.path}
-                      onClick={() => setIsOpen(false)}
-                      className={cn(
-                        "flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-smooth",
-                        link.color,
-                        isActive(link.path)
-                          ? "bg-primary/10"
-                          : "hover:bg-muted"
-                      )}
-                    >
-                      <Icon className="h-4 w-4" />
-                      <span>{link.label}</span>
-                    </Link>
-                  );
-                })}
-              </div>
 
               <div className="pt-4 border-t border-border/50 mt-4 space-y-2">
                 <Button asChild variant="ghost" size="sm" className="w-full justify-start">
