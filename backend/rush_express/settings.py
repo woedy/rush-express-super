@@ -11,6 +11,11 @@ ALLOWED_HOSTS = [
     for host in os.environ.get("DJANGO_ALLOWED_HOSTS", "*").split(",")
     if host.strip()
 ]
+# Always allow localhost for health checks
+if "localhost" not in ALLOWED_HOSTS:
+    ALLOWED_HOSTS.append("localhost")
+if "127.0.0.1" not in ALLOWED_HOSTS:
+    ALLOWED_HOSTS.append("127.0.0.1")
 
 INSTALLED_APPS = [
     "django.contrib.admin",
