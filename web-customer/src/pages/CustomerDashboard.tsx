@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LoadingState, EmptyState } from "@/components/State";
 import { apiClient } from "@/lib/api";
 import { useAuthStore } from "@/lib/auth";
@@ -13,13 +13,8 @@ import { connectNotifications, connectOrderChat, connectOrderTracking } from "@/
 import type { Address, ChatMessage, Order, OrderQuote, OrderTrackingEvent } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import {
-  History,
-  MapPin,
-  MessageCircle,
   Package,
-  Plus,
   Send,
-  Truck,
 } from "lucide-react";
 
 const paymentProviders = ["STRIPE", "PAYPAL"] as const;
@@ -35,6 +30,8 @@ type ItemDraft = { inventory_item_id: string; quantity: string };
 const CustomerDashboard = () => {
   const tokens = useAuthStore((state) => state.tokens);
   const user = useAuthStore((state) => state.user);
+  const [searchParams] = useSearchParams();
+  const activeTab = searchParams.get("tab") || "orders";
 
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
@@ -203,6 +200,354 @@ const CustomerDashboard = () => {
     }
   };
 
+  const renderContent = () => {
+    switch (activeTab) {
+      case "orders":
+        return (
+          <Card>
+            <CardHeader>
+              <CardTitle>Order history</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {isLoadingOrders ? (
+                <LoadingState title="Loading orders" description="Pulling your order history." />
+              ) : orders.length === 0 ? (
+                <EmptyState title="No orders yet" description="Place your first delivery order." />
+              ) : (
+                orders.map((order) => (
+                  <div
+                    key={order.id}
+                    className={cn(
+                      "rounded-lg border border-border/60 p-4 transition",
+                      selectedOrderId === order.id && "border-primary"
+                    )}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-semibold">Order #{order.id}</p>
+                        <p className="text-xs text-muted-foreground">{order.dropoff_address_line1}</p>
+                      </div>
+                      <Badge>{order.status}</Badge>
+                    </div>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setSelectedOrderId(order.id)}
+                      >
+                        View details
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={() => handleReorder(order.id)}>
+                        Reorder
+                      </Button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </CardContent>
+          </Card>
+        );
+      case "new":
+        return (
+          <Card>
+            <CardHeader>
+              <CardTitle>Create a new order</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="grid gap-4 md:grid-cols-3">
+                <div className="space-y-2">
+                  <Label htmlFor="merchant-branch-id">Merchant branch ID</Label>
+                  <Input
+                    id="merchant-branch-id"
+                    value={orderForm.merchant_branch_id}
+                    onChange={(event) =>
+                      setOrderForm((prev) => ({ ...prev, merchant_branch_id: event.target.value }))
+                    }
+                    placeholder="e.g. 1"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="dropoff-address-id">Dropoff address ID</Label>
+                  <Input
+                    id="dropoff-address-id"
+                    value={orderForm.dropoff_address_id}
+                    onChange={(event) =>
+                      setOrderForm((prev) => ({ ...prev, dropoff_address_id: event.target.value }))
+                    }
+                    placeholder="e.g. 2"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="payment-provider">Payment provider</Label>
+                  <select
+                    id="payment-provider"
+                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    value={orderForm.payment_provider}
+                    onChange={(event) =>
+                      setOrderForm((prev) => ({
+                        ...prev,
+                        payment_provider: event.target.value,
+                      }))
+                    }
+                  >
+                    {paymentProviders.map((provider) => (
+                      <option key={provider} value={provider}>
+                        {provider}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-semibold">Order items</h3>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() =>
+                      setItems((prev) => [...prev, { inventory_item_id: "", quantity: "1" }])
+                    }
+                  >
+                    Add item
+                  </Button>
+                </div>
+                {items.map((item, index) => (
+                  <div key={index} className="grid gap-4 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor={`inventory-item-${index}`}>Inventory item ID</Label>
+                      <Input
+                        id={`inventory-item-${index}`}
+                        value={item.inventory_item_id}
+                        onChange={(event) =>
+                          setItems((prev) =>
+                            prev.map((entry, entryIndex) =>
+                              entryIndex === index
+                                ? { ...entry, inventory_item_id: event.target.value }
+                                : entry
+                            )
+                          )
+                        }
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor={`inventory-qty-${index}`}>Quantity</Label>
+                      <Input
+                        id={`inventory-qty-${index}`}
+                        value={item.quantity}
+                        onChange={(event) =>
+                          setItems((prev) =>
+                            prev.map((entry, entryIndex) =>
+                              entryIndex === index ? { ...entry, quantity: event.target.value } : entry
+                            )
+                          )
+                        }
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex gap-3">
+                <Button variant="outline" onClick={handleQuote}>
+                  Get quote
+                </Button>
+                <Button onClick={handleCreateOrder} disabled={!quote || isSubmittingOrder}>
+                  {isSubmittingOrder ? "Submitting..." : "Confirm & Pay"}
+                </Button>
+              </div>
+
+              {quote ? (
+                <div className="rounded-lg border border-border/60 p-4 text-sm">
+                  <p className="font-semibold">Quote</p>
+                  <div className="mt-2 grid gap-2 md:grid-cols-3">
+                    <div>Subtotal: ${quote.subtotal}</div>
+                    <div>Delivery fee: ${quote.delivery_fee}</div>
+                    <div>Total: ${quote.total}</div>
+                  </div>
+                </div>
+              ) : null}
+            </CardContent>
+          </Card>
+        );
+      case "addresses":
+        return (
+          <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
+            <Card>
+              <CardHeader>
+                <CardTitle>Saved addresses</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {isLoadingAddresses ? (
+                  <LoadingState title="Loading addresses" description="Fetching saved locations." />
+                ) : addresses.length === 0 ? (
+                  <EmptyState title="No addresses" description="Add your first drop-off address." />
+                ) : (
+                  addresses.map((address) => (
+                    <div key={address.id} className="rounded-lg border border-border/60 p-3">
+                      <p className="text-sm font-semibold">{address.label || "Address"}</p>
+                      <p className="text-xs text-muted-foreground">{address.address_line1}</p>
+                    </div>
+                  ))
+                )}
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle>Add address</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleAddAddress} className="space-y-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="address-label">Label</Label>
+                    <Input
+                      id="address-label"
+                      value={addressForm.label}
+                      onChange={(event) =>
+                        setAddressForm((prev) => ({ ...prev, label: event.target.value }))
+                      }
+                      placeholder="Home"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="address-line1">Address line 1</Label>
+                    <Input
+                      id="address-line1"
+                      value={addressForm.address_line1}
+                      onChange={(event) =>
+                        setAddressForm((prev) => ({ ...prev, address_line1: event.target.value }))
+                      }
+                      list="address-suggestions"
+                      placeholder="123 Main St"
+                    />
+                    <datalist id="address-suggestions">
+                      {addressSuggestions.map((suggestion) => (
+                        <option key={suggestion} value={suggestion} />
+                      ))}
+                    </datalist>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="address-city">City</Label>
+                    <Input
+                      id="address-city"
+                      value={addressForm.city}
+                      onChange={(event) =>
+                        setAddressForm((prev) => ({ ...prev, city: event.target.value }))
+                      }
+                    />
+                  </div>
+                  <div className="grid gap-2 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="address-state">State</Label>
+                      <Input
+                        id="address-state"
+                        value={addressForm.state}
+                        onChange={(event) =>
+                          setAddressForm((prev) => ({ ...prev, state: event.target.value }))
+                        }
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="address-postal">Postal code</Label>
+                      <Input
+                        id="address-postal"
+                        value={addressForm.postal_code}
+                        onChange={(event) =>
+                          setAddressForm((prev) => ({ ...prev, postal_code: event.target.value }))
+                        }
+                      />
+                    </div>
+                  </div>
+                  <Button type="submit" className="w-full">
+                    Save address
+                  </Button>
+                </form>
+              </CardContent>
+            </Card>
+          </div>
+        );
+      case "tracking":
+        return (
+          <Card>
+            <CardHeader>
+              <CardTitle>Order tracking</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {!selectedOrder ? (
+                <EmptyState title="Select an order" description="Choose an order to view tracking." />
+              ) : (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Package className="h-4 w-4 text-primary" />
+                    <span className="text-sm font-semibold">Order #{selectedOrder.id}</span>
+                  </div>
+                  <div className="rounded-lg border border-border/60 p-4">
+                    <p className="text-xs text-muted-foreground mb-2">Tracking timeline</p>
+                    <div className="space-y-2">
+                      {trackingEvents.map((event) => (
+                        <div key={event.id} className="flex items-start gap-3">
+                          <Badge variant="outline">{event.status}</Badge>
+                          <div className="text-xs text-muted-foreground">
+                            {event.created_at}
+                            {event.latitude && event.longitude ? (
+                              <div>
+                                Coordinates: {event.latitude}, {event.longitude}
+                              </div>
+                            ) : null}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        );
+      case "chat":
+        return (
+          <Card>
+            <CardHeader>
+              <CardTitle>Chat with rider</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {!selectedOrder ? (
+                <EmptyState title="Select an order" description="Choose an order to chat with your rider." />
+              ) : (
+                <>
+                  <div className="space-y-3">
+                    {chatMessages.length === 0 ? (
+                      <EmptyState title="No messages yet" description="Start the conversation." />
+                    ) : (
+                      chatMessages.map((message) => (
+                        <div key={message.id} className="rounded-lg border border-border/60 p-3">
+                          <p className="text-xs text-muted-foreground">{message.created_at}</p>
+                          <p className="text-sm">{message.message}</p>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                  <form onSubmit={handleSendChat} className="flex gap-2">
+                    <Textarea
+                      value={chatInput}
+                      onChange={(event) => setChatInput(event.target.value)}
+                      placeholder="Type a message"
+                      className="min-h-[44px]"
+                    />
+                    <Button type="submit" size="icon" className="mt-auto">
+                      <Send className="h-4 w-4" />
+                    </Button>
+                  </form>
+                </>
+              )}
+            </CardContent>
+          </Card>
+        );
+      default:
+        return null;
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-subtle">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -211,366 +556,9 @@ const CustomerDashboard = () => {
           <p className="text-muted-foreground">Welcome back, {user?.first_name || user?.username}.</p>
         </div>
 
-        <Tabs defaultValue="orders" className="space-y-6">
-          <TabsList>
-            <TabsTrigger value="orders" className="flex items-center gap-2">
-              <History className="h-4 w-4" /> Orders
-            </TabsTrigger>
-            <TabsTrigger value="new" className="flex items-center gap-2">
-              <Plus className="h-4 w-4" /> New Order
-            </TabsTrigger>
-            <TabsTrigger value="addresses" className="flex items-center gap-2">
-              <MapPin className="h-4 w-4" /> Addresses
-            </TabsTrigger>
-            <TabsTrigger value="tracking" className="flex items-center gap-2">
-              <Truck className="h-4 w-4" /> Tracking
-            </TabsTrigger>
-            <TabsTrigger value="chat" className="flex items-center gap-2">
-              <MessageCircle className="h-4 w-4" /> Chat
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="orders">
-            <Card>
-              <CardHeader>
-                <CardTitle>Order history</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {isLoadingOrders ? (
-                  <LoadingState title="Loading orders" description="Pulling your order history." />
-                ) : orders.length === 0 ? (
-                  <EmptyState title="No orders yet" description="Place your first delivery order." />
-                ) : (
-                  orders.map((order) => (
-                    <div
-                      key={order.id}
-                      className={cn(
-                        "rounded-lg border border-border/60 p-4 transition",
-                        selectedOrderId === order.id && "border-primary"
-                      )}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm font-semibold">Order #{order.id}</p>
-                          <p className="text-xs text-muted-foreground">{order.dropoff_address_line1}</p>
-                        </div>
-                        <Badge>{order.status}</Badge>
-                      </div>
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setSelectedOrderId(order.id)}
-                        >
-                          View details
-                        </Button>
-                        <Button variant="ghost" size="sm" onClick={() => handleReorder(order.id)}>
-                          Reorder
-                        </Button>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="new">
-            <Card>
-              <CardHeader>
-                <CardTitle>Create a new order</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="grid gap-4 md:grid-cols-3">
-                  <div className="space-y-2">
-                    <Label htmlFor="merchant-branch-id">Merchant branch ID</Label>
-                    <Input
-                      id="merchant-branch-id"
-                      value={orderForm.merchant_branch_id}
-                      onChange={(event) =>
-                        setOrderForm((prev) => ({ ...prev, merchant_branch_id: event.target.value }))
-                      }
-                      placeholder="e.g. 1"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="dropoff-address-id">Dropoff address ID</Label>
-                    <Input
-                      id="dropoff-address-id"
-                      value={orderForm.dropoff_address_id}
-                      onChange={(event) =>
-                        setOrderForm((prev) => ({ ...prev, dropoff_address_id: event.target.value }))
-                      }
-                      placeholder="e.g. 2"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="payment-provider">Payment provider</Label>
-                    <select
-                      id="payment-provider"
-                      className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                      value={orderForm.payment_provider}
-                      onChange={(event) =>
-                        setOrderForm((prev) => ({
-                          ...prev,
-                          payment_provider: event.target.value,
-                        }))
-                      }
-                    >
-                      {paymentProviders.map((provider) => (
-                        <option key={provider} value={provider}>
-                          {provider}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-sm font-semibold">Order items</h3>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() =>
-                        setItems((prev) => [...prev, { inventory_item_id: "", quantity: "1" }])
-                      }
-                    >
-                      Add item
-                    </Button>
-                  </div>
-                  {items.map((item, index) => (
-                    <div key={index} className="grid gap-4 md:grid-cols-2">
-                      <div className="space-y-2">
-                        <Label htmlFor={`inventory-item-${index}`}>Inventory item ID</Label>
-                        <Input
-                          id={`inventory-item-${index}`}
-                          value={item.inventory_item_id}
-                          onChange={(event) =>
-                            setItems((prev) =>
-                              prev.map((entry, entryIndex) =>
-                                entryIndex === index
-                                  ? { ...entry, inventory_item_id: event.target.value }
-                                  : entry
-                              )
-                            )
-                          }
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor={`inventory-qty-${index}`}>Quantity</Label>
-                        <Input
-                          id={`inventory-qty-${index}`}
-                          value={item.quantity}
-                          onChange={(event) =>
-                            setItems((prev) =>
-                              prev.map((entry, entryIndex) =>
-                                entryIndex === index ? { ...entry, quantity: event.target.value } : entry
-                              )
-                            )
-                          }
-                        />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="flex gap-3">
-                  <Button variant="outline" onClick={handleQuote}>
-                    Get quote
-                  </Button>
-                  <Button onClick={handleCreateOrder} disabled={!quote || isSubmittingOrder}>
-                    {isSubmittingOrder ? "Submitting..." : "Confirm & Pay"}
-                  </Button>
-                </div>
-
-                {quote ? (
-                  <div className="rounded-lg border border-border/60 p-4 text-sm">
-                    <p className="font-semibold">Quote</p>
-                    <div className="mt-2 grid gap-2 md:grid-cols-3">
-                      <div>Subtotal: ${quote.subtotal}</div>
-                      <div>Delivery fee: ${quote.delivery_fee}</div>
-                      <div>Total: ${quote.total}</div>
-                    </div>
-                  </div>
-                ) : null}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="addresses">
-            <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Saved addresses</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  {isLoadingAddresses ? (
-                    <LoadingState title="Loading addresses" description="Fetching saved locations." />
-                  ) : addresses.length === 0 ? (
-                    <EmptyState title="No addresses" description="Add your first drop-off address." />
-                  ) : (
-                    addresses.map((address) => (
-                      <div key={address.id} className="rounded-lg border border-border/60 p-3">
-                        <p className="text-sm font-semibold">{address.label || "Address"}</p>
-                        <p className="text-xs text-muted-foreground">{address.address_line1}</p>
-                      </div>
-                    ))
-                  )}
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader>
-                  <CardTitle>Add address</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <form onSubmit={handleAddAddress} className="space-y-3">
-                    <div className="space-y-2">
-                      <Label htmlFor="address-label">Label</Label>
-                      <Input
-                        id="address-label"
-                        value={addressForm.label}
-                        onChange={(event) =>
-                          setAddressForm((prev) => ({ ...prev, label: event.target.value }))
-                        }
-                        placeholder="Home"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="address-line1">Address line 1</Label>
-                      <Input
-                        id="address-line1"
-                        value={addressForm.address_line1}
-                        onChange={(event) =>
-                          setAddressForm((prev) => ({ ...prev, address_line1: event.target.value }))
-                        }
-                        list="address-suggestions"
-                        placeholder="123 Main St"
-                      />
-                      <datalist id="address-suggestions">
-                        {addressSuggestions.map((suggestion) => (
-                          <option key={suggestion} value={suggestion} />
-                        ))}
-                      </datalist>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="address-city">City</Label>
-                      <Input
-                        id="address-city"
-                        value={addressForm.city}
-                        onChange={(event) =>
-                          setAddressForm((prev) => ({ ...prev, city: event.target.value }))
-                        }
-                      />
-                    </div>
-                    <div className="grid gap-2 md:grid-cols-2">
-                      <div className="space-y-2">
-                        <Label htmlFor="address-state">State</Label>
-                        <Input
-                          id="address-state"
-                          value={addressForm.state}
-                          onChange={(event) =>
-                            setAddressForm((prev) => ({ ...prev, state: event.target.value }))
-                          }
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="address-postal">Postal code</Label>
-                        <Input
-                          id="address-postal"
-                          value={addressForm.postal_code}
-                          onChange={(event) =>
-                            setAddressForm((prev) => ({ ...prev, postal_code: event.target.value }))
-                          }
-                        />
-                      </div>
-                    </div>
-                    <Button type="submit" className="w-full">
-                      Save address
-                    </Button>
-                  </form>
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="tracking">
-            <Card>
-              <CardHeader>
-                <CardTitle>Order tracking</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {!selectedOrder ? (
-                  <EmptyState title="Select an order" description="Choose an order to view tracking." />
-                ) : (
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-2">
-                      <Package className="h-4 w-4 text-primary" />
-                      <span className="text-sm font-semibold">Order #{selectedOrder.id}</span>
-                    </div>
-                    <div className="rounded-lg border border-border/60 p-4">
-                      <p className="text-xs text-muted-foreground mb-2">Tracking timeline</p>
-                      <div className="space-y-2">
-                        {trackingEvents.map((event) => (
-                          <div key={event.id} className="flex items-start gap-3">
-                            <Badge variant="outline">{event.status}</Badge>
-                            <div className="text-xs text-muted-foreground">
-                              {event.created_at}
-                              {event.latitude && event.longitude ? (
-                                <div>
-                                  Coordinates: {event.latitude}, {event.longitude}
-                                </div>
-                              ) : null}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="chat">
-            <Card>
-              <CardHeader>
-                <CardTitle>Chat with rider</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {!selectedOrder ? (
-                  <EmptyState title="Select an order" description="Choose an order to chat with your rider." />
-                ) : (
-                  <>
-                    <div className="space-y-3">
-                      {chatMessages.length === 0 ? (
-                        <EmptyState title="No messages yet" description="Start the conversation." />
-                      ) : (
-                        chatMessages.map((message) => (
-                          <div key={message.id} className="rounded-lg border border-border/60 p-3">
-                            <p className="text-xs text-muted-foreground">{message.created_at}</p>
-                            <p className="text-sm">{message.message}</p>
-                          </div>
-                        ))
-                      )}
-                    </div>
-                    <form onSubmit={handleSendChat} className="flex gap-2">
-                      <Textarea
-                        value={chatInput}
-                        onChange={(event) => setChatInput(event.target.value)}
-                        placeholder="Type a message"
-                        className="min-h-[44px]"
-                      />
-                      <Button type="submit" size="icon" className="mt-auto">
-                        <Send className="h-4 w-4" />
-                      </Button>
-                    </form>
-                  </>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+        <div className="space-y-6">
+          {renderContent()}
+        </div>
       </div>
     </div>
   );

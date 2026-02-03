@@ -17,6 +17,7 @@ export interface User {
   last_name: string;
   role: UserRole;
   is_suspended: boolean;
+  is_verified: boolean;
   profile?: UserProfile | null;
 }
 
@@ -64,6 +65,7 @@ export interface AdminUser {
   last_name: string;
   role: UserRole;
   is_suspended: boolean;
+  is_verified: boolean;
   rider_profile_id?: number | null;
   rider_kyc_status?: string | null;
 }

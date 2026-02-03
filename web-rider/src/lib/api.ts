@@ -80,6 +80,33 @@ class ApiClient {
     return handleResponse<User>(response);
   }
 
+  async verifyEmail(token: string): Promise<{ message: string }> {
+    const response = await fetch(`${this.baseUrl}/auth/verify-email/`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token }),
+    });
+    return handleResponse<{ message: string }>(response);
+  }
+
+  async requestPasswordReset(email: string): Promise<{ message: string }> {
+    const response = await fetch(`${this.baseUrl}/auth/password-reset/`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
+    });
+    return handleResponse<{ message: string }>(response);
+  }
+
+  async confirmPasswordReset(token: string, new_password: string): Promise<{ message: string }> {
+    const response = await fetch(`${this.baseUrl}/auth/password-reset-confirm/`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token, new_password }),
+    });
+    return handleResponse<{ message: string }>(response);
+  }
+
   async getAvailability(): Promise<RiderAvailability> {
     const response = await fetch(`${this.baseUrl}/api/rider/availability/`, {
       headers: this.buildHeaders(),
@@ -144,4 +171,4 @@ class ApiClient {
   }
 }
 
-export const apiClient = new ApiClient(API_BASE_URL, () => localStorage.getItem("access_token"));
+export const apiClient = new ApiClient(API_BASE_URL, () => localStorage.getItem("rider_access_token"));

@@ -34,17 +34,24 @@ class MerchantProfileSerializer(serializers.ModelSerializer):
 
 class MeSerializer(serializers.ModelSerializer):
     profile = serializers.SerializerMethodField()
+    role = serializers.SerializerMethodField()
 
     class Meta:
         model = User
         fields = ("id", "username", "email", "first_name", "last_name", "role", "is_suspended", "profile")
 
+    def get_role(self, obj):
+        if obj.is_superuser or obj.is_staff:
+            return User.Roles.ADMIN
+        return obj.role
+
     def get_profile(self, obj):
-        if obj.role == User.Roles.CUSTOMER and hasattr(obj, "customerprofile"):
+        role = self.get_role(obj)
+        if role == User.Roles.CUSTOMER and hasattr(obj, "customerprofile"):
             return CustomerProfileSerializer(obj.customerprofile).data
-        if obj.role == User.Roles.RIDER and hasattr(obj, "riderprofile"):
+        if role == User.Roles.RIDER and hasattr(obj, "riderprofile"):
             return RiderProfileSerializer(obj.riderprofile).data
-        if obj.role == User.Roles.MERCHANT and hasattr(obj, "merchantprofile"):
+        if role == User.Roles.MERCHANT and hasattr(obj, "merchantprofile"):
             return MerchantProfileSerializer(obj.merchantprofile).data
         return None
 
@@ -71,11 +78,6 @@ class RegisterSerializer(serializers.Serializer):
     def validate_email(self, value):
         if User.objects.filter(email__iexact=value).exists():
             raise serializers.ValidationError("Email already in use.")
-        return value
-
-    def validate_role(self, value):
-        if value == User.Roles.ADMIN:
-            raise serializers.ValidationError("Admin accounts cannot be self-registered.")
         return value
 
     def validate(self, attrs):
@@ -131,3 +133,16 @@ class LogoutSerializer(serializers.Serializer):
             token.blacklist()
         except TokenError as exc:
             raise serializers.ValidationError({"refresh": "Invalid token."}) from exc
+
+
+class VerifyEmailSerializer(serializers.Serializer):
+    token = serializers.CharField()
+
+
+class PasswordResetSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+
+
+class PasswordResetConfirmSerializer(serializers.Serializer):
+    token = serializers.CharField()
+    new_password = serializers.CharField(write_only=True)

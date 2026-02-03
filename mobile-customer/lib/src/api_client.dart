@@ -57,7 +57,7 @@ class ApiClient {
     }
     return null;
   }
-
+  
   Future<http.Response> _authedRequest(Future<http.Response> Function(String token) handler) async {
     final tokens = await authStore.loadTokens();
     if (tokens == null) {

@@ -1,8 +1,8 @@
 import { Link } from 'react-router-dom';
-import { 
-  Truck, 
-  Phone, 
-  Mail, 
+import {
+  Truck,
+  Phone,
+  Mail,
   MapPin,
   Facebook,
   Twitter,
@@ -18,7 +18,7 @@ const Footer = () => {
     { path: '/', label: 'Home' },
     { path: '/about', label: 'About Us' },
     { path: '/contact', label: 'Contact' },
-    { path: '/auth/signup', label: 'Get Started' },
+    { path: '/register', label: 'Get Started' },
   ];
 
   const services = [
@@ -54,8 +54,8 @@ const Footer = () => {
               </div>
             </Link>
             <p className="text-sm text-muted-foreground leading-relaxed">
-              Your trusted delivery partner providing fast, reliable, and affordable 
-              delivery services across the city. Experience seamless logistics with 
+              Your trusted delivery partner providing fast, reliable, and affordable
+              delivery services across the city. Experience seamless logistics with
               real-time tracking and professional service.
             </p>
             <div className="space-y-2">

@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { EmptyState, LoadingState } from "@/components/State";
 import { apiClient } from "@/lib/api";
 import { useAuthStore } from "@/lib/auth";
@@ -13,12 +13,8 @@ import type { Order, RiderAvailability, RiderEarnings, RiderLocation } from "@/l
 import { cn } from "@/lib/utils";
 import {
   Activity,
-  DollarSign,
-  MapPin,
   Navigation,
   RefreshCw,
-  Route,
-  Truck,
 } from "lucide-react";
 
 const statusOptions = [
@@ -32,6 +28,9 @@ const formatCurrency = (value: string | number) =>
 
 const RiderDashboard = () => {
   const user = useAuthStore((state) => state.user);
+  const [searchParams] = useSearchParams();
+  const activeTab = searchParams.get("tab") || "orders";
+
   const [availability, setAvailability] = useState<RiderAvailability | null>(null);
   const [availableOrders, setAvailableOrders] = useState<Order[]>([]);
   const [activeOrder, setActiveOrder] = useState<Order | null>(null);
@@ -192,6 +191,238 @@ const RiderDashboard = () => {
     return `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}`;
   }, [activeOrder]);
 
+  const renderContent = () => {
+    switch (activeTab) {
+      case "orders":
+        return (
+          <Card>
+            <CardHeader className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+              <CardTitle>Available orders</CardTitle>
+              <Button variant="outline" size="sm" onClick={loadOrders}>
+                <RefreshCw className="mr-2 h-4 w-4" /> Refresh
+              </Button>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {isLoadingOrders ? (
+                <LoadingState title="Loading orders" description="Checking the latest pickup requests." />
+              ) : availableOrders.length === 0 ? (
+                <EmptyState title="No available orders" description="Stay online to receive requests." />
+              ) : (
+                availableOrders.map((order) => (
+                  <div
+                    key={order.id}
+                    className="rounded-lg border border-border/60 p-4 flex flex-col gap-4 md:flex-row md:items-center md:justify-between"
+                  >
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="secondary">#{order.id}</Badge>
+                        <Badge>{order.status}</Badge>
+                      </div>
+                      <div className="text-sm">
+                        <p className="font-medium">Pickup</p>
+                        <p className="text-muted-foreground">
+                          {order.pickup_address_line1}, {order.pickup_city}
+                        </p>
+                      </div>
+                      <div className="text-sm">
+                        <p className="font-medium">Dropoff</p>
+                        <p className="text-muted-foreground">
+                          {order.dropoff_address_line1}, {order.dropoff_city}
+                        </p>
+                      </div>
+                      <p className="text-sm font-semibold">Total: {formatCurrency(order.total)}</p>
+                    </div>
+                    <Button onClick={() => handleAcceptOrder(order.id)}>Accept order</Button>
+                  </div>
+                ))
+              )}
+            </CardContent>
+          </Card>
+        );
+      case "active":
+        return (
+          <Card>
+            <CardHeader>
+              <CardTitle>Active order</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {!activeOrder ? (
+                <EmptyState title="No active order" description="Accept an order to start delivery." />
+              ) : (
+                <>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="rounded-lg border border-border/60 p-4">
+                      <p className="text-xs text-muted-foreground">Pickup</p>
+                      <p className="font-semibold">{activeOrder.pickup_address_line1}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {activeOrder.pickup_city}, {activeOrder.pickup_country}
+                      </p>
+                    </div>
+                    <div className="rounded-lg border border-border/60 p-4">
+                      <p className="text-xs text-muted-foreground">Dropoff</p>
+                      <p className="font-semibold">{activeOrder.dropoff_address_line1}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {activeOrder.dropoff_city}, {activeOrder.dropoff_country}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-3">
+                    {statusOptions.map((option) => (
+                      <Button
+                        key={option.value}
+                        variant={activeOrder.status === option.value ? "default" : "outline"}
+                        onClick={() => handleStatusUpdate(option.value)}
+                        disabled={isUpdatingStatus || activeOrder.status === option.value}
+                      >
+                        {option.label}
+                      </Button>
+                    ))}
+                  </div>
+                  <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Activity className="h-4 w-4" />
+                      <span>Current status: {activeOrder.status}</span>
+                    </div>
+                    <Button asChild variant="ghost">
+                      <a href={navigationUrl} target="_blank" rel="noreferrer">
+                        <Navigation className="mr-2 h-4 w-4" /> Open navigation
+                      </a>
+                    </Button>
+                  </div>
+                </>
+              )}
+            </CardContent>
+          </Card>
+        );
+      case "earnings":
+        return (
+          <Card>
+            <CardHeader>
+              <CardTitle>Earnings overview</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {isLoadingEarnings ? (
+                <LoadingState title="Loading earnings" description="Calculating your payouts." />
+              ) : (
+                <>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="rounded-lg border border-border/60 p-4">
+                      <p className="text-xs text-muted-foreground">Total deliveries</p>
+                      <p className="text-2xl font-semibold">{totalDeliveries}</p>
+                    </div>
+                    <div className="rounded-lg border border-border/60 p-4">
+                      <p className="text-xs text-muted-foreground">Total earnings</p>
+                      <p className="text-2xl font-semibold">{formatCurrency(totalEarnings)}</p>
+                    </div>
+                  </div>
+                  {earnings.length === 0 ? (
+                    <EmptyState
+                      title="No earnings yet"
+                      description="Complete deliveries to start seeing payouts."
+                    />
+                  ) : (
+                    earnings.map((entry) => (
+                      <div
+                        key={entry.id}
+                        className="rounded-lg border border-border/60 p-4 flex flex-col gap-2 md:flex-row md:items-center md:justify-between"
+                      >
+                        <div>
+                          <p className="text-sm font-semibold">
+                            {entry.period_start} - {entry.period_end}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            Deliveries: {entry.total_deliveries}
+                          </p>
+                        </div>
+                        <div className="text-sm font-semibold">
+                          {formatCurrency(entry.total_earnings)}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </>
+              )}
+            </CardContent>
+          </Card>
+        );
+      case "location":
+        return (
+          <Card>
+            <CardHeader>
+              <CardTitle>Live location updates</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between rounded-lg border border-border/60 p-4">
+                <div>
+                  <p className="text-sm font-semibold">Auto tracking</p>
+                  <p className="text-xs text-muted-foreground">
+                    Send live coordinates to dispatch every few seconds.
+                  </p>
+                </div>
+                <Switch checked={trackingEnabled} onCheckedChange={setTrackingEnabled} />
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="latitude">Latitude</Label>
+                  <Input
+                    id="latitude"
+                    value={manualLocation.latitude}
+                    onChange={(event) =>
+                      setManualLocation((prev) => ({ ...prev, latitude: event.target.value }))
+                    }
+                    placeholder="37.7749"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="longitude">Longitude</Label>
+                  <Input
+                    id="longitude"
+                    value={manualLocation.longitude}
+                    onChange={(event) =>
+                      setManualLocation((prev) => ({ ...prev, longitude: event.target.value }))
+                    }
+                    placeholder="-122.4194"
+                  />
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-3 md:flex-row md:items-center">
+                <Button onClick={handleManualLocation} variant="outline">
+                  Send location now
+                </Button>
+                {locationError ? (
+                  <p className="text-sm text-destructive">{locationError}</p>
+                ) : lastLocation ? (
+                  <p className="text-sm text-muted-foreground">
+                    Last sent: {lastLocation.latitude}, {lastLocation.longitude}
+                  </p>
+                ) : (
+                  <p className="text-sm text-muted-foreground">No location sent yet.</p>
+                )}
+              </div>
+
+              <div
+                className={cn(
+                  "rounded-lg border border-border/60 p-4 text-sm",
+                  trackingEnabled ? "bg-muted/30" : "bg-background"
+                )}
+              >
+                <p className="font-semibold">Tracking status</p>
+                <p className="text-muted-foreground">
+                  {trackingEnabled
+                    ? "Auto tracking is on. Keep this tab open while you are online."
+                    : "Enable auto tracking to keep customers updated in real time."}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        );
+      default:
+        return null;
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-subtle">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
@@ -223,247 +454,9 @@ const RiderDashboard = () => {
           </Card>
         </div>
 
-        <Tabs defaultValue="orders" className="space-y-6">
-          <TabsList>
-            <TabsTrigger value="orders" className="flex items-center gap-2">
-              <Truck className="h-4 w-4" /> Orders
-            </TabsTrigger>
-            <TabsTrigger value="active" className="flex items-center gap-2">
-              <Route className="h-4 w-4" /> Active
-            </TabsTrigger>
-            <TabsTrigger value="earnings" className="flex items-center gap-2">
-              <DollarSign className="h-4 w-4" /> Earnings
-            </TabsTrigger>
-            <TabsTrigger value="location" className="flex items-center gap-2">
-              <MapPin className="h-4 w-4" /> Location
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="orders">
-            <Card>
-              <CardHeader className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-                <CardTitle>Available orders</CardTitle>
-                <Button variant="outline" size="sm" onClick={loadOrders}>
-                  <RefreshCw className="mr-2 h-4 w-4" /> Refresh
-                </Button>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {isLoadingOrders ? (
-                  <LoadingState title="Loading orders" description="Checking the latest pickup requests." />
-                ) : availableOrders.length === 0 ? (
-                  <EmptyState title="No available orders" description="Stay online to receive requests." />
-                ) : (
-                  availableOrders.map((order) => (
-                    <div
-                      key={order.id}
-                      className="rounded-lg border border-border/60 p-4 flex flex-col gap-4 md:flex-row md:items-center md:justify-between"
-                    >
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2">
-                          <Badge variant="secondary">#{order.id}</Badge>
-                          <Badge>{order.status}</Badge>
-                        </div>
-                        <div className="text-sm">
-                          <p className="font-medium">Pickup</p>
-                          <p className="text-muted-foreground">
-                            {order.pickup_address_line1}, {order.pickup_city}
-                          </p>
-                        </div>
-                        <div className="text-sm">
-                          <p className="font-medium">Dropoff</p>
-                          <p className="text-muted-foreground">
-                            {order.dropoff_address_line1}, {order.dropoff_city}
-                          </p>
-                        </div>
-                        <p className="text-sm font-semibold">Total: {formatCurrency(order.total)}</p>
-                      </div>
-                      <Button onClick={() => handleAcceptOrder(order.id)}>Accept order</Button>
-                    </div>
-                  ))
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="active">
-            <Card>
-              <CardHeader>
-                <CardTitle>Active order</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {!activeOrder ? (
-                  <EmptyState title="No active order" description="Accept an order to start delivery." />
-                ) : (
-                  <>
-                    <div className="grid gap-4 md:grid-cols-2">
-                      <div className="rounded-lg border border-border/60 p-4">
-                        <p className="text-xs text-muted-foreground">Pickup</p>
-                        <p className="font-semibold">{activeOrder.pickup_address_line1}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {activeOrder.pickup_city}, {activeOrder.pickup_country}
-                        </p>
-                      </div>
-                      <div className="rounded-lg border border-border/60 p-4">
-                        <p className="text-xs text-muted-foreground">Dropoff</p>
-                        <p className="font-semibold">{activeOrder.dropoff_address_line1}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {activeOrder.dropoff_city}, {activeOrder.dropoff_country}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-3">
-                      {statusOptions.map((option) => (
-                        <Button
-                          key={option.value}
-                          variant={activeOrder.status === option.value ? "default" : "outline"}
-                          onClick={() => handleStatusUpdate(option.value)}
-                          disabled={isUpdatingStatus || activeOrder.status === option.value}
-                        >
-                          {option.label}
-                        </Button>
-                      ))}
-                    </div>
-                    <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Activity className="h-4 w-4" />
-                        <span>Current status: {activeOrder.status}</span>
-                      </div>
-                      <Button asChild variant="ghost">
-                        <a href={navigationUrl} target="_blank" rel="noreferrer">
-                          <Navigation className="mr-2 h-4 w-4" /> Open navigation
-                        </a>
-                      </Button>
-                    </div>
-                  </>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="earnings">
-            <Card>
-              <CardHeader>
-                <CardTitle>Earnings overview</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {isLoadingEarnings ? (
-                  <LoadingState title="Loading earnings" description="Calculating your payouts." />
-                ) : (
-                  <>
-                    <div className="grid gap-4 md:grid-cols-2">
-                      <div className="rounded-lg border border-border/60 p-4">
-                        <p className="text-xs text-muted-foreground">Total deliveries</p>
-                        <p className="text-2xl font-semibold">{totalDeliveries}</p>
-                      </div>
-                      <div className="rounded-lg border border-border/60 p-4">
-                        <p className="text-xs text-muted-foreground">Total earnings</p>
-                        <p className="text-2xl font-semibold">{formatCurrency(totalEarnings)}</p>
-                      </div>
-                    </div>
-                    {earnings.length === 0 ? (
-                      <EmptyState
-                        title="No earnings yet"
-                        description="Complete deliveries to start seeing payouts."
-                      />
-                    ) : (
-                      earnings.map((entry) => (
-                        <div
-                          key={entry.id}
-                          className="rounded-lg border border-border/60 p-4 flex flex-col gap-2 md:flex-row md:items-center md:justify-between"
-                        >
-                          <div>
-                            <p className="text-sm font-semibold">
-                              {entry.period_start} - {entry.period_end}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              Deliveries: {entry.total_deliveries}
-                            </p>
-                          </div>
-                          <div className="text-sm font-semibold">
-                            {formatCurrency(entry.total_earnings)}
-                          </div>
-                        </div>
-                      ))
-                    )}
-                  </>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="location">
-            <Card>
-              <CardHeader>
-                <CardTitle>Live location updates</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between rounded-lg border border-border/60 p-4">
-                  <div>
-                    <p className="text-sm font-semibold">Auto tracking</p>
-                    <p className="text-xs text-muted-foreground">
-                      Send live coordinates to dispatch every few seconds.
-                    </p>
-                  </div>
-                  <Switch checked={trackingEnabled} onCheckedChange={setTrackingEnabled} />
-                </div>
-
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="latitude">Latitude</Label>
-                    <Input
-                      id="latitude"
-                      value={manualLocation.latitude}
-                      onChange={(event) =>
-                        setManualLocation((prev) => ({ ...prev, latitude: event.target.value }))
-                      }
-                      placeholder="37.7749"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="longitude">Longitude</Label>
-                    <Input
-                      id="longitude"
-                      value={manualLocation.longitude}
-                      onChange={(event) =>
-                        setManualLocation((prev) => ({ ...prev, longitude: event.target.value }))
-                      }
-                      placeholder="-122.4194"
-                    />
-                  </div>
-                </div>
-
-                <div className="flex flex-col gap-3 md:flex-row md:items-center">
-                  <Button onClick={handleManualLocation} variant="outline">
-                    Send location now
-                  </Button>
-                  {locationError ? (
-                    <p className="text-sm text-destructive">{locationError}</p>
-                  ) : lastLocation ? (
-                    <p className="text-sm text-muted-foreground">
-                      Last sent: {lastLocation.latitude}, {lastLocation.longitude}
-                    </p>
-                  ) : (
-                    <p className="text-sm text-muted-foreground">No location sent yet.</p>
-                  )}
-                </div>
-
-                <div
-                  className={cn(
-                    "rounded-lg border border-border/60 p-4 text-sm",
-                    trackingEnabled ? "bg-muted/30" : "bg-background"
-                  )}
-                >
-                  <p className="font-semibold">Tracking status</p>
-                  <p className="text-muted-foreground">
-                    {trackingEnabled
-                      ? "Auto tracking is on. Keep this tab open while you are online."
-                      : "Enable auto tracking to keep customers updated in real time."}
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+        <div className="space-y-6">
+          {renderContent()}
+        </div>
       </div>
     </div>
   );
