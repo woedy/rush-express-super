@@ -45,6 +45,15 @@ python manage.py collectstatic --noinput || {
   exit 1
 }
 
+# Verify Django configuration
+echo "Verifying Django configuration..."
+python manage.py check || {
+  echo "ERROR: Django configuration check failed"
+  exit 1
+}
+
+echo "backend-service-ready" # Log marker for easy finding
+
 echo "Starting Daphne server on 0.0.0.0:8000..."
 # Added --access-log - to see hits in Coolify logs
 # Added --proxy-headers for production support (Nginx)
