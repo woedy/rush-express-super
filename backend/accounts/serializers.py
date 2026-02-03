@@ -80,11 +80,6 @@ class RegisterSerializer(serializers.Serializer):
             raise serializers.ValidationError("Email already in use.")
         return value
 
-    def validate_role(self, value):
-        if value == User.Roles.ADMIN:
-            raise serializers.ValidationError("Admin accounts cannot be self-registered.")
-        return value
-
     def validate(self, attrs):
         role = attrs.get("role")
         if role == User.Roles.MERCHANT and not attrs.get("business_name"):
