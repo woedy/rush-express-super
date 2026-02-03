@@ -14,7 +14,9 @@ RUN pip install --no-cache-dir -r /app/requirements.txt
 
 COPY . /app
 
-RUN chmod +x /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh \
+  && mkdir -p /app/static /app/media /static /media \
+  && chmod -R 777 /app/static /app/media /static /media
 
 EXPOSE 8000
 
