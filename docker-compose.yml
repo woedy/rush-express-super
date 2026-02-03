@@ -1,175 +1,127 @@
-version: "3.9"
+version: '3.8'
 
 services:
+  # Database
   postgres:
     image: postgres:15-alpine
-    env_file:
-      - envs/postgres.env
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
       interval: 10s
       timeout: 5s
       retries: 5
+    restart: unless-stopped
 
+  # Redis
   redis:
     image: redis:7-alpine
+    volumes:
+      - redis_data:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
+    restart: unless-stopped
 
+  # Backend API
   backend:
     build:
       context: ./backend
-    env_file:
-      - envs/backend.env
+      dockerfile: Dockerfile
+    environment:
+      - DEBUG=${DEBUG:-0}
+      - SECRET_KEY=${SECRET_KEY}
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - ALLOWED_HOSTS=${ALLOWED_HOSTS}
+      - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS}
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
-    volumes:
-      - static_data:/static
-      - media_data:/media
-    expose:
-      - "8000"
-    ports:
-      - "8000:8000"
-    healthcheck:
-      test: ["CMD-SHELL", "curl -fs http://localhost:8000/health/ || exit 1"]
-      interval: 15s
-      timeout: 5s
-      retries: 5
+    command: >
+      sh -c "python manage.py migrate &&
+             python manage.py collectstatic --noinput &&
+             daphne -b 0.0.0.0 -p 8000 rush_express.asgi:application"
+    restart: unless-stopped
 
-  celery-worker:
+  # Celery Worker
+  celery:
     build:
       context: ./backend
-    env_file:
-      - envs/backend.env
+      dockerfile: Dockerfile
+    environment:
+      - DEBUG=${DEBUG:-0}
+      - SECRET_KEY=${SECRET_KEY}
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     command: celery -A rush_express worker -l info
-    depends_on:
-      backend:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+    restart: unless-stopped
 
-  celery-beat:
-    build:
-      context: ./backend
-    env_file:
-      - envs/backend.env
-    command: celery -A rush_express beat -l info
-    depends_on:
-      backend:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-
-  web-customer:
-    build:
-      context: ./web-customer
-      args:
-        VITE_API_URL: http://localhost:8000
-        VITE_WS_URL: ws://localhost:8000
-    depends_on:
-      backend:
-        condition: service_healthy
-    expose:
-      - "8080"
-    ports:
-      - "8081:8080"
-    healthcheck:
-      test: ["CMD", "node", "-e", "require('http').get('http://localhost:8080',res=>process.exit(res.statusCode<500?0:1)).on('error',()=>process.exit(1));"]
-      interval: 20s
-      timeout: 5s
-      retries: 5
-
-  web-rider:
-    build:
-      context: ./web-rider
-      args:
-        VITE_API_URL: http://localhost:8000
-        VITE_WS_URL: ws://localhost:8000
-    depends_on:
-      backend:
-        condition: service_healthy
-    expose:
-      - "8080"
-    ports:
-      - "8082:8080"
-    healthcheck:
-      test: ["CMD", "node", "-e", "require('http').get('http://localhost:8080',res=>process.exit(res.statusCode<500?0:1)).on('error',()=>process.exit(1));"]
-      interval: 20s
-      timeout: 5s
-      retries: 5
-
-  web-merchant:
-    build:
-      context: ./web-merchant
-      args:
-        VITE_API_URL: http://localhost:8000
-        VITE_WS_URL: ws://localhost:8000
-    depends_on:
-      backend:
-        condition: service_healthy
-    expose:
-      - "8080"
-    ports:
-      - "8083:8080"
-    healthcheck:
-      test: ["CMD", "node", "-e", "require('http').get('http://localhost:8080',res=>process.exit(res.statusCode<500?0:1)).on('error',()=>process.exit(1));"]
-      interval: 20s
-      timeout: 5s
-      retries: 5
-
+  # Web Admin
   web-admin:
     build:
       context: ./web-admin
-      args:
-        VITE_API_URL: http://localhost:8000
-        VITE_WS_URL: ws://localhost:8000
-    depends_on:
-      backend:
-        condition: service_healthy
-    expose:
-      - "8080"
-    ports:
-      - "8084:8080"
-    healthcheck:
-      test: ["CMD", "node", "-e", "require('http').get('http://localhost:8080',res=>process.exit(res.statusCode<500?0:1)).on('error',()=>process.exit(1));"]
-      interval: 20s
-      timeout: 5s
-      retries: 5
+      dockerfile: Dockerfile
+    environment:
+      - NODE_ENV=production
+      - VITE_API_URL=${VITE_API_URL}
+      - VITE_WS_URL=${VITE_WS_URL}
+    restart: unless-stopped
 
-  nginx:
-    image: nginx:1.25-alpine
-    depends_on:
-      backend:
-        condition: service_healthy
-      web-customer:
-        condition: service_healthy
-      web-rider:
-        condition: service_healthy
-      web-merchant:
-        condition: service_healthy
-      web-admin:
-        condition: service_healthy
-    volumes:
-      - ./nginx/conf.d:/etc/nginx/conf.d:ro
-      - static_data:/static:ro
-      - media_data:/media:ro
-    ports:
-      - "80"
-    healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost/health/ >/dev/null 2>&1 || exit 1"]
-      interval: 20s
-      timeout: 5s
-      retries: 5
+  # Web Customer
+  web-customer:
+    build:
+      context: ./web-customer
+      dockerfile: Dockerfile
+    environment:
+      - NODE_ENV=production
+      - VITE_API_URL=${VITE_API_URL}
+      - VITE_WS_URL=${VITE_WS_URL}
+    restart: unless-stopped
+
+  # Web Merchant
+  web-merchant:
+    build:
+      context: ./web-merchant
+      dockerfile: Dockerfile
+    environment:
+      - NODE_ENV=production
+      - VITE_API_URL=${VITE_API_URL}
+      - VITE_WS_URL=${VITE_WS_URL}
+    restart: unless-stopped
+
+  # Web Rider
+  web-rider:
+    build:
+      context: ./web-rider
+      dockerfile: Dockerfile
+    environment:
+      - NODE_ENV=production
+      - VITE_API_URL=${VITE_API_URL}
+      - VITE_WS_URL=${VITE_WS_URL}
+    restart: unless-stopped
 
 volumes:
   postgres_data:
-  static_data:
-  media_data:
+  redis_data:
+
+networks:
+  default:
+    name: rush_express
