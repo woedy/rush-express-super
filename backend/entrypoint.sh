@@ -3,8 +3,18 @@
 set -x
 set -e
 
+# Error handling function
+handle_error() {
+    echo "ERROR: Failed at line $1"
+    exit 1
+}
+
+# Trap errors
+trap 'handle_error $LINENO' ERR
+
 echo "--- Rush Express Backend Diagnostic Start ---"
 echo "Current Directory: $(pwd)"
+echo "User: $(whoami)"
 echo "Files in Directory:"
 ls -F
 echo "--- Diagnostic End ---"
@@ -18,7 +28,6 @@ fi
 echo "Waiting for PostgreSQL ($POSTGRES_HOST:$POSTGRES_PORT) to be ready..."
 max_attempts=30
 attempt=0
-# Removed 2>/dev/null to see the actual error in Coolify logs
 until PGPASSWORD=$POSTGRES_PASSWORD psql -h "$POSTGRES_HOST" -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c '\q'; do
   attempt=$((attempt + 1))
   if [ $attempt -ge $max_attempts ]; then
@@ -31,30 +40,32 @@ done
 
 echo "PostgreSQL is ready!"
 
-# Run migrations
+# Run migrations (capture output but ensure failure is visible)
 echo "Running database migrations..."
-python manage.py migrate --noinput || {
-  echo "ERROR: Database migrations failed"
-  exit 1
-}
+if ! python manage.py migrate --noinput; then
+    echo "ERROR: Database migrations failed"
+    # Try to print some debug info
+    python manage.py showmigrations
+    exit 1
+fi
 
 # Collect static files
 echo "Collecting static files..."
-python manage.py collectstatic --noinput || {
-  echo "ERROR: Static file collection failed"
-  exit 1
-}
+if ! python manage.py collectstatic --noinput; then
+    echo "ERROR: Static file collection failed"
+    exit 1
+fi
 
 # Verify Django configuration
 echo "Verifying Django configuration..."
-python manage.py check || {
-  echo "ERROR: Django configuration check failed"
-  exit 1
-}
+if ! python manage.py check; then
+    echo "ERROR: Django configuration check failed"
+    exit 1
+fi
 
 echo "backend-service-ready" # Log marker for easy finding
 
 echo "Starting Daphne server on 0.0.0.0:8000..."
-# Added --access-log - to see hits in Coolify logs
-# Added --proxy-headers for production support (Nginx)
-exec daphne -u /tmp/daphne.sock -b 0.0.0.0 -p 8000 --access-log - --proxy-headers rush_express.asgi:application
+# Using exec to replace the shell process
+# Removing --access-log - if it causes issues, but adding simple debug logs
+exec daphne -u /tmp/daphne.sock -b 0.0.0.0 -p 8000 --proxy-headers rush_express.asgi:application
