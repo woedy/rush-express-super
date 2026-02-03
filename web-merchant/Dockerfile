@@ -12,7 +12,7 @@ ARG VITE_WS_URL=ws://localhost
 ENV VITE_API_URL=${VITE_API_URL}
 ENV VITE_WS_URL=${VITE_WS_URL}
 
-RUN npm run build
+RUN npm run build && ls -la /app/dist || (echo "Build failed or dist missing" && ls -la /app && exit 1)
 
 FROM node:20-alpine
 
