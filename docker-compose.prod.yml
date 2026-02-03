@@ -14,6 +14,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    restart: always
 
   redis:
     image: redis:7-alpine
@@ -22,6 +23,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    restart: always
 
   backend:
     build:
@@ -51,15 +53,15 @@ services:
     volumes:
       - static_data:/static
       - media_data:/media
-    # command: /app/entrypoint.sh # Removed redundant override
     expose:
       - "8000"
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8000/health/ || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 240s
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    restart: always
 
   celery-worker:
     build:
@@ -81,6 +83,7 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    restart: always
 
   celery-beat:
     build:
@@ -102,6 +105,7 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    restart: always
 
   web-customer:
     build:
@@ -119,6 +123,7 @@ services:
       interval: 20s
       timeout: 5s
       retries: 5
+    restart: always
 
   web-rider:
     build:
@@ -136,6 +141,7 @@ services:
       interval: 20s
       timeout: 5s
       retries: 5
+    restart: always
 
   web-merchant:
     build:
@@ -153,6 +159,7 @@ services:
       interval: 20s
       timeout: 5s
       retries: 5
+    restart: always
 
   web-admin:
     build:
@@ -170,6 +177,7 @@ services:
       interval: 20s
       timeout: 5s
       retries: 5
+    restart: always
 
   nginx:
     image: nginx:1.25-alpine
@@ -195,6 +203,7 @@ services:
       interval: 20s
       timeout: 5s
       retries: 5
+    restart: always
 
 volumes:
   postgres_data:
