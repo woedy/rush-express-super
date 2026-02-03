@@ -45,5 +45,7 @@ python manage.py collectstatic --noinput || {
   exit 1
 }
 
-echo "Starting Daphne server..."
-exec daphne -b 0.0.0.0 -p 8000 rush_express.asgi:application
+echo "Starting Daphne server on 0.0.0.0:8000..."
+# Added --access-log - to see hits in Coolify logs
+# Added --proxy-headers for production support (Nginx)
+exec daphne -u /tmp/daphne.sock -b 0.0.0.0 -p 8000 --access-log - --proxy-headers rush_express.asgi:application
