@@ -1,13 +1,25 @@
 #!/usr/bin/env bash
+# Enable command tracing for better debugging
+set -x
 set -e
 
-echo "Starting Rush Express Backend..."
+echo "--- Rush Express Backend Diagnostic Start ---"
+echo "Current Directory: $(pwd)"
+echo "Files in Directory:"
+ls -F
+echo "--- Diagnostic End ---"
+
+if [ ! -f "manage.py" ]; then
+    echo "ERROR: manage.py not found in $(pwd)"
+    exit 1
+fi
 
 # Wait for database to be ready
-echo "Waiting for PostgreSQL to be ready..."
+echo "Waiting for PostgreSQL ($POSTGRES_HOST:$POSTGRES_PORT) to be ready..."
 max_attempts=30
 attempt=0
-until PGPASSWORD=$POSTGRES_PASSWORD psql -h "$POSTGRES_HOST" -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c '\q' 2>/dev/null; do
+# Removed 2>/dev/null to see the actual error in Coolify logs
+until PGPASSWORD=$POSTGRES_PASSWORD psql -h "$POSTGRES_HOST" -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c '\q'; do
   attempt=$((attempt + 1))
   if [ $attempt -ge $max_attempts ]; then
     echo "ERROR: PostgreSQL did not become ready in time"
