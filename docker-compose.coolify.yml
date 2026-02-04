@@ -66,9 +66,6 @@ services:
     restart: unless-stopped
     networks:
       - rush_express
-    labels:
-      - "coolify.managed=true"
-      - "coolify.port=8000"
 
   # Celery Worker
   celery:
@@ -107,9 +104,6 @@ services:
     restart: unless-stopped
     networks:
       - rush_express
-    labels:
-      - "coolify.managed=true"
-      - "coolify.port=8080"
 
   # Web Customer
   web-customer:
@@ -123,9 +117,6 @@ services:
     restart: unless-stopped
     networks:
       - rush_express
-    labels:
-      - "coolify.managed=true"
-      - "coolify.port=8080"
 
   # Web Merchant
   web-merchant:
@@ -139,9 +130,6 @@ services:
     restart: unless-stopped
     networks:
       - rush_express
-    labels:
-      - "coolify.managed=true"
-      - "coolify.port=8080"
 
   # Web Rider
   web-rider:
@@ -155,9 +143,6 @@ services:
     restart: unless-stopped
     networks:
       - rush_express
-    labels:
-      - "coolify.managed=true"
-      - "coolify.port=8080"
 
 volumes:
   postgres_data:
