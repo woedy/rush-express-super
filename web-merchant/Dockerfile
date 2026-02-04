@@ -1,29 +1,43 @@
-FROM node:20-alpine AS build
+FROM node:18-alpine AS builder
 
 WORKDIR /app
 
+# Copy package files
 COPY package*.json ./
+
+# Install all dependencies (including devDependencies for build)
 RUN npm ci
 
+# Copy source code
 COPY . .
 
-ARG VITE_API_URL=/api
-ARG VITE_WS_URL=ws://localhost
-ENV VITE_API_URL=${VITE_API_URL}
-ENV VITE_WS_URL=${VITE_WS_URL}
+# Build the application
+RUN npm run build
 
-RUN npm run build && ls -la /app/dist || (echo "Build failed or dist missing" && ls -la /app && exit 1)
-
-FROM node:20-alpine
+# Production stage
+FROM node:18-alpine AS production
 
 WORKDIR /app
-ENV NODE_ENV=production
 
-COPY --from=build /app/dist ./dist
-COPY --from=build /app/server.js ./server.js
-COPY --from=build /app/package*.json ./
+# Install only production dependencies
+COPY package*.json ./
+RUN npm ci --only=production && npm cache clean --force
 
-RUN npm ci --omit=dev
+# Copy built application
+COPY --from=builder /app/dist ./dist
+COPY server.js ./
 
+# Create non-root user
+RUN addgroup -g 1001 -S nodejs && adduser -S nextjs -u 1001
+RUN chown -R nextjs:nodejs /app
+USER nextjs
+
+# Expose port
 EXPOSE 8080
-CMD ["node", "server.js"]
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
+    CMD wget --no-verbose --tries=1 --spider http://localhost:8080/ || exit 1
+
+# Start the application
+CMD ["npm", "start"]

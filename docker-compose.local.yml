@@ -1,165 +1,146 @@
-version: "3.9"
+version: '3.8'
 
 services:
+  # Database
   postgres:
     image: postgres:15-alpine
-    env_file:
-      - envs/postgres.env
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-rush_express}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
       interval: 10s
       timeout: 5s
       retries: 5
 
+  # Redis
   redis:
     image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
 
+  # Backend API
   backend:
     build:
       context: ./backend
-    env_file:
-      - envs/backend.env
+      dockerfile: Dockerfile
+    environment:
+      - DEBUG=1
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-rush_express}
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - ALLOWED_HOSTS=localhost,127.0.0.1,backend
+      - CORS_ALLOWED_ORIGINS=http://localhost:3000,http://localhost:3001,http://localhost:3002,http://localhost:3003
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
+    command: >
+      sh -c "python manage.py migrate &&
+             python manage.py runserver 0.0.0.0:8000"
+
+  # Celery Worker
+  celery:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    environment:
+      - DEBUG=1
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-rush_express}
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
     volumes:
-      - static_data:/static
-      - media_data:/media
-    ports:
-      - "8000:8000"
-    healthcheck:
-      test: ["CMD-SHELL", "curl -fs http://localhost:8000/health/ || exit 1"]
-      interval: 15s
-      timeout: 5s
-      retries: 5
-
-  celery-worker:
-    build:
-      context: ./backend
-    env_file:
-      - envs/backend.env
+      - ./backend:/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     command: celery -A rush_express worker -l info
-    depends_on:
-      backend:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
 
-  celery-beat:
-    build:
-      context: ./backend
-    env_file:
-      - envs/backend.env
-    command: celery -A rush_express beat -l info
-    depends_on:
-      backend:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-
-  web-customer:
-    build:
-      context: ./web-customer
-      args:
-        VITE_API_URL: http://localhost:8000
-        VITE_WS_URL: ws://localhost:8000
-    depends_on:
-      backend:
-        condition: service_healthy
-    ports:
-      - "8081:8080"
-    healthcheck:
-      test: ["CMD", "node", "-e", "require('http').get('http://localhost:8080',res=>process.exit(res.statusCode<500?0:1)).on('error',()=>process.exit(1));"]
-      interval: 20s
-      timeout: 5s
-      retries: 5
-
-  web-rider:
-    build:
-      context: ./web-rider
-      args:
-        VITE_API_URL: http://localhost:8000
-        VITE_WS_URL: ws://localhost:8000
-    depends_on:
-      backend:
-        condition: service_healthy
-    ports:
-      - "8082:8080"
-    healthcheck:
-      test: ["CMD", "node", "-e", "require('http').get('http://localhost:8080',res=>process.exit(res.statusCode<500?0:1)).on('error',()=>process.exit(1));"]
-      interval: 20s
-      timeout: 5s
-      retries: 5
-
-  web-merchant:
-    build:
-      context: ./web-merchant
-      args:
-        VITE_API_URL: http://localhost:8000
-        VITE_WS_URL: ws://localhost:8000
-    depends_on:
-      backend:
-        condition: service_healthy
-    ports:
-      - "8083:8080"
-    healthcheck:
-      test: ["CMD", "node", "-e", "require('http').get('http://localhost:8080',res=>process.exit(res.statusCode<500?0:1)).on('error',()=>process.exit(1));"]
-      interval: 20s
-      timeout: 5s
-      retries: 5
-
+  # Web Admin
   web-admin:
     build:
       context: ./web-admin
-      args:
-        VITE_API_URL: http://localhost:8000
-        VITE_WS_URL: ws://localhost:8000
-    depends_on:
-      backend:
-        condition: service_healthy
+      dockerfile: Dockerfile
+    environment:
+      - NODE_ENV=development
+      - VITE_API_URL=http://localhost:8000
+      - VITE_WS_URL=ws://localhost:8000
     ports:
-      - "8084:8080"
-    healthcheck:
-      test: ["CMD", "node", "-e", "require('http').get('http://localhost:8080',res=>process.exit(res.statusCode<500?0:1)).on('error',()=>process.exit(1));"]
-      interval: 20s
-      timeout: 5s
-      retries: 5
-
-  nginx:
-    image: nginx:1.25-alpine
-    depends_on:
-      backend:
-        condition: service_healthy
-      web-customer:
-        condition: service_healthy
-      web-rider:
-        condition: service_healthy
-      web-merchant:
-        condition: service_healthy
-      web-admin:
-        condition: service_healthy
+      - "3000:8080"
     volumes:
-      - ./nginx/conf.d:/etc/nginx/conf.d:ro
-      - static_data:/static:ro
-      - media_data:/media:ro
+      - ./web-admin/src:/app/src
+      - ./web-admin/public:/app/public
+
+  # Web Customer
+  web-customer:
+    build:
+      context: ./web-customer
+      dockerfile: Dockerfile
+    environment:
+      - NODE_ENV=development
+      - VITE_API_URL=http://localhost:8000
+      - VITE_WS_URL=ws://localhost:8000
     ports:
-      - "8080:80"
-    healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost/health/ >/dev/null 2>&1 || exit 1"]
-      interval: 20s
-      timeout: 5s
-      retries: 5
+      - "3001:8080"
+    volumes:
+      - ./web-customer/src:/app/src
+      - ./web-customer/public:/app/public
+
+  # Web Merchant
+  web-merchant:
+    build:
+      context: ./web-merchant
+      dockerfile: Dockerfile
+    environment:
+      - NODE_ENV=development
+      - VITE_API_URL=http://localhost:8000
+      - VITE_WS_URL=ws://localhost:8000
+    ports:
+      - "3002:8080"
+    volumes:
+      - ./web-merchant/src:/app/src
+      - ./web-merchant/public:/app/public
+
+  # Web Rider
+  web-rider:
+    build:
+      context: ./web-rider
+      dockerfile: Dockerfile
+    environment:
+      - NODE_ENV=development
+      - VITE_API_URL=http://localhost:8000
+      - VITE_WS_URL=ws://localhost:8000
+    ports:
+      - "3003:8080"
+    volumes:
+      - ./web-rider/src:/app/src
+      - ./web-rider/public:/app/public
 
 volumes:
   postgres_data:
-  static_data:
-  media_data:
+  redis_data:
+
+networks:
+  default:
+    name: rush_express_local
